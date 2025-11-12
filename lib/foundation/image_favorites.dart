@@ -63,7 +63,16 @@ class ImageFavoriteManager{
   static List<ImageFavorite> search(String keyword) {
     if (keyword.isEmpty) return getAll();
     
-    var res = _db.select("""
+    // var res = _db.select("""
+    //   select * from image_favorites 
+    //   where title like ? or id like ?
+    // """, ['%$keyword%', '%$keyword%']);
+    final db = _db;
+    if (db == null) {
+      // 数据库未就绪时，按业务语义返回空结果
+      return [];
+    }
+    final res = db.select("""
       select * from image_favorites 
       where title like ? or id like ?
     """, ['%$keyword%', '%$keyword%']);
@@ -90,10 +99,20 @@ class ImageFavoriteManager{
   /// 批量删除图片收藏
   static void deleteMultiple(Iterable<ImageFavorite> favorites) {
     for (var favorite in favorites) {
-      _db.execute("""
+      // _db.execute("""
+      //   delete from image_favorites
+      //   where id = ? and ep = ? and page = ?;
+      // """, [favorite.id, favorite.ep, favorite.page]);
+      final db = _db;
+      if (db == null) {
+        // DB 尚未初始化：按你现在的容错策略直接跳过
+        return;
+      }
+      db.execute("""
         delete from image_favorites
         where id = ? and ep = ? and page = ?;
       """, [favorite.id, favorite.ep, favorite.page]);
+
     }
     Webdav.uploadData();
   }
