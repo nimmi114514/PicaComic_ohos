@@ -1,14 +1,18 @@
 {
   "apiType": "stageMode",
   "buildOption": {
+    "arkOptions": {
+      "apPath": "./entry.ap"
+    }
   },
+
   "targets": [
     {
       "name": "default",
       "runtimeOS": "HarmonyOS"
     },
-    {
-      "name": "ohosTest"
-    }
+//    {
+//      "name": "ohosTest"
+//    }
   ]
 }

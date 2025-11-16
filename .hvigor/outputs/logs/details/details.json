@@ -16,12 +16,11 @@
       "getNodeByName",
       "getAllNodes",
       "getRootNode",
-      "getNodeName",
-      "getStartParams",
-      "buildFinished"
+      "getNodeName"
     ],
     "CONFIG_PROPERTIES": {},
-    "BUILD_ID": "202511090622452230",
+    "TOTAL_TIME": 4824042,
+    "BUILD_ID": "202511122355332460",
     "ERROR_MESSAGE": [
       {
         "CODE": "00302032",
@@ -29,9 +28,8 @@
         "SOLUTIONS": [
           "Check if system plugin defined correctly in file: /Volumes/tipro7000/project/pica/PicaComic/hvigorfile.ts "
         ],
-        "TIMESTAMP": "1762629765604"
+        "TIMESTAMP": "1762952133249"
       }
-    ],
-    "TOTAL_TIME": 383156042
+    ]
   }
 }
