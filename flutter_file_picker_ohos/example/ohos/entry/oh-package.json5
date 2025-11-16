@@ -1,0 +1,11 @@
+{
+  "name": "entry",
+  "version": "1.0.1",
+  "description": "Please describe the basic information.",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "file_picker_ohos": "file:../har/file_picker_ohos.har"
+  }
+}

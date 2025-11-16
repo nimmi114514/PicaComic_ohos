@@ -1,0 +1,20 @@
+{
+  "modelVersion": "5.0.0",
+  "name": "file_picker_example",
+  "version": "1.0.1",
+  "description": "Please describe the basic information.",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "@ohos/flutter_ohos": "file:./har/flutter.har"
+  },
+  "devDependencies": {
+    "@ohos/hypium": "1.0.6"
+  },
+  "overrides": {
+    "@ohos/flutter_ohos": "file:./har/flutter.har",
+    "@ohos/flutter_module": "file:./entry",
+    "file_picker_ohos": "../../ohos"
+  }
+}
