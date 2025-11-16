@@ -11,6 +11,10 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+node_modules/
+.hvigor/
+.flutter_tmp_work/
+ohos/oh_modules/
 
 # IntelliJ related
 *.iml
