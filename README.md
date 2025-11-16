@@ -48,21 +48,29 @@ git clone https://github.com/WJ-T/PicaComic_ohos
 An OpenHarmony host project now lives under `ohos/`. To produce a `.hap` package:
 
 1. Install the OpenHarmony or HarmonyOS SDK and set `OHOS_SDK_HOME` (or run `flutter config --ohos-sdk <path>`).
-2. Enable the Flutter OHOS feature and fetch artifacts（可选参数传递 `ohos-x64` 等架构给脚本）：
+2. Enable the Flutter OHOS feature and fetch artifacts：
+
    ```shell
    flutter config --enable-ohos
    flutter precache --ohos
    ./tool/prepare_ohos_har.sh
    ```
+3. Build the QuickJS FFI library for HarmonyOS (needed for the in-app JS engine):
 
-   `prepare_ohos_har.sh` 默认复制 `ohos-arm64` 版本，传入其它架构（例如 `./tool/prepare_ohos_har.sh ohos-x64`）可切换目标。
-3. Build the Hap from the repo root (arm64 by default):
+   ```shell
+   ./tool/build_quickjs_ohos.sh
+   ```
+
+   The script compiles `libflutter_qjs_plugin.so` for `arm64-v8a` and `x86_64` with the DevEco / HarmonyOS toolchain. Re-run it whenever you update `flutter_qjs/cxx`.
+4. Build the Hap from the repo root (arm64 by default):
+
    ```shell
    flutter build hap --target-platform=ohos-arm64
    ```
 
    The output appears under `build/ohos/outputs/`.
-4. Build a **release** hap (make sure your `flutter.har` comes from the release engine; debug engines expect JIT artifacts and will crash on AOT packages):
+5. Build a **release** hap (make sure your `flutter.har` comes from the release engine; debug engines expect JIT artifacts and will crash on AOT packages):
+
    ```shell
    rm -f ohos/har/flutter.har
    ./tool/prepare_ohos_har.sh ohos-arm64-release
@@ -75,13 +83,12 @@ An OpenHarmony host project now lives under `ohos/`. To produce a `.hap` package
 
    - `HOS_SDK_HOME` must point to a HarmonyOS SDK that contains both `hmscore` and `openharmony`; the OpenHarmony SDK bundled with DevEco Studio alone is not enough.
    - After the build finishes, run `unzip -p ohos/entry/build/default/outputs/default/entry-default-signed.hap module.json | grep buildMode` to confirm it is `release`.
-5. If you prefer to keep building/running directly inside DevEco Studio/Hvigor instead of `flutter build hap`, run before each build:
+6. If you prefer to keep building/running directly inside DevEco Studio/Hvigor instead of `flutter build hap`, run before each build:
+
    ```shell
    ./tool/sync_ohos_flutter_assets.sh [debug|profile|release]
    ```
-
-   该脚本会执行 `flutter build bundle` 并把 `build/flutter_assets` 复制到 `ohos/entry/src/main/resources/rawfile`，否则 OHOS 进程会因为找不到 `flutter_assets/kernel_blob.bin` 在调试版上崩溃。
-6. Optionally open the `ohos` folder in DevEco Studio 5.0+ to fine-tune signing or launch on a device/emulator.
+7. Optionally open the `ohos` folder in DevEco Studio 5.0+ to fine-tune signing or launch on a device/emulator.
 
 The `ohos/har` directory is ignored by git—`flutter build hap` copies the required `flutter.har` there automatically. Most pure-Dart plugins work out of the box; native functionality still requires individual OHOS implementations.
 

@@ -15,6 +15,7 @@ node_modules/
 .hvigor/
 .flutter_tmp_work/
 ohos/oh_modules/
+flutter_qjs/build_ohos/
 
 # IntelliJ related
 *.iml
