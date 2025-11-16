@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "sqflite",
+        "License": "BSD 2-Clause License",
+        "License File": "LICENSE",
+        "Version Number": "0cda463f3fb39c73ad947ed37a45f9c783b2a179",
+        "Owner": "george.lihui@huawei.com",
+        "Upstream URL": "https://github.com/tekartik/sqflite/",
+        "Description": "Flutter plugin for SQLite, a self-contained, high-reliability, embedded, SQL database engine."
+    }
+]

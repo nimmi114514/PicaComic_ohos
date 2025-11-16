@@ -1,0 +1,42 @@
+name: sqflite_common_ffi_web_test
+description: sqflite web test.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  path: ^1.7.0
+  sqflite_common_ffi_web:
+  sqflite_common_ffi:
+  sqflite_common:
+  sqflite_common_test:
+    path: ../../sqflite_common_test
+dev_dependencies:
+  build_runner: '>=2.1.4'
+  build_web_compilers: '>=3.2.1'
+  lints: '>=2.0.0'
+  process_run:
+  test:
+dependency_overrides:
+  sqflite_common_ffi_web:
+    path: ../sqflite_common_ffi_web
+  sqflite_common_ffi:
+    path: ../../sqflite_common_ffi
+  sqflite_common:
+    path: ../../sqflite_common
+  sqflite_common_test:
+    path: ../../sqflite_common_test
+
+sqflite:
+  # Update for force changing file name for service worker
+  # to force an app update until a better solution is found
+  # default being sqflite_sw.js
+  #
+  # Could be sqflite_sw_v1.js, sqflite_sw_v2.js,...
+  #
+  # Re run setup then and change the sharedWorkerUri options in the client.
+  #
+  sqflite_common_ffi_web:
+    sw_js_file: sqflite_sw_v1.js
