@@ -19,9 +19,11 @@ class OhosPathProvider extends PathProviderPlatform {
 
   static final String _supportRoot = _initPersistentDir();
   static final String _cacheRoot = _initCacheDir();
+  static final String _publicDownloadRoot = _initPublicDownloadRoot();
 
   static String get supportRoot => _supportRoot;
   static String get cacheRoot => _cacheRoot;
+  static String get sharedDownloadRoot => _publicDownloadRoot;
 
   static String _initPersistentDir() {
     final candidates = <String>[
@@ -59,12 +61,6 @@ class OhosPathProvider extends PathProviderPlatform {
     return fallback;
   }
 
-  String get _downloadsPath {
-    final path = "$_supportRoot/downloads";
-    Directory(path).createSync(recursive: true);
-    return path;
-  }
-
   static String get fallbackSupportPath => _supportRoot;
   static String get fallbackCachePath => _cacheRoot;
 
@@ -93,6 +89,38 @@ class OhosPathProvider extends PathProviderPlatform {
   Future<List<String>?> getExternalStoragePaths({StorageDirectory? type}) async =>
       <String>[_supportRoot];
 
+  static String _initPublicDownloadRoot() {
+    const bundleDirectory = "PicaComic";
+    const candidates = <String>[
+      "/storage/Users/CurrentUser/Download",
+      "/storage/Users/CurrentUser/download",
+      "/storage/Users/currentUser/Download",
+      "/storage/Users/currentUser/download",
+      "/storage/Users/Default/Download",
+      "/storage/emulated/0/Download",
+      "/storage/emulated/0/download",
+    ];
+    for (final base in candidates) {
+      try {
+        final dir = Directory(base);
+        if (!dir.existsSync()) {
+          continue;
+        }
+        final target = "$base/$bundleDirectory";
+        Directory(target).createSync(recursive: true);
+        final testFile = File("$target/.access_test");
+        testFile.writeAsStringSync("ok");
+        testFile.deleteSync();
+        return target;
+      } catch (_) {
+        // no permission, try next candidate
+      }
+    }
+    final fallback = "$_supportRoot/downloads";
+    Directory(fallback).createSync(recursive: true);
+    return fallback;
+  }
+
   @override
-  Future<String?> getDownloadsPath() async => _downloadsPath;
+  Future<String?> getDownloadsPath() async => _publicDownloadRoot;
 }

@@ -11,6 +11,18 @@
     {
       "name": "EntryAbility_label",
       "value": "Pica Comic"
+    },
+    {
+      "name": "perm_read_media",
+      "value": "读取媒体库以便导入或浏览本地漫画。"
+    },
+    {
+      "name": "perm_write_media",
+      "value": "写入媒体库以导出或缓存漫画文件。"
+    },
+    {
+      "name": "perm_download_dir",
+      "value": "访问公共下载目录以保存漫画到 Download/com.github.pacalini.pica_comic。"
     }
   ]
 }

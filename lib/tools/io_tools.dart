@@ -13,6 +13,7 @@ import 'package:pica_comic/foundation/cache_manager.dart';
 import 'package:pica_comic/foundation/history.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
 import 'package:pica_comic/foundation/log.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 import 'package:pica_comic/network/cookie_jar.dart';
 import 'package:pica_comic/network/download.dart';
 import 'package:pica_comic/network/download_model.dart';
@@ -121,7 +122,9 @@ Future<bool> exportPdf(String pdfPath) async {
     } else {
       final FileSaveLocation? result = await getSaveLocation(
         suggestedName: File(pdfPath).name,
-        acceptedTypeGroups: [const XTypeGroup(label: 'pdf', extensions: ['pdf'])],
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'pdf', extensions: ['pdf'])
+        ],
       );
 
       if (result != null) {
@@ -276,7 +279,14 @@ Future<void> moveDirectory(Directory source, Directory destination) async {
 ///检查下载目录是否可用, 不可用则重置
 Future<void> checkDownloadPath() async {
   var path = appdata.settings[22];
-  if (path != "") {
+  if (PlatformUtils.isOhos) {
+    if (path.isNotEmpty) {
+      appdata.settings[22] = "";
+      appdata.updateSettings();
+    }
+    return;
+  }
+  if (path.isNotEmpty) {
     var directory = Directory(path);
     if (!directory.existsSync()) {
       appdata.settings[22] = "";
