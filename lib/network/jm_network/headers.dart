@@ -22,7 +22,7 @@ const _jmAuthKey = "18comicAPPContent";
 Map<String, String> getBaseHeaders() {
   return {
     "Accept": "*/*",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept-Encoding": "gzip, deflate",
     "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
     "Connection": "keep-alive",
     "Origin": "https://localhost",
@@ -37,7 +37,7 @@ Map<String, String> getBaseHeaders() {
 Map<String, String> getImgHeaders(){
   return {
     "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept-Encoding": "gzip, deflate",
     "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
     "Connection": "keep-alive",
     "Referer": "https://localhost/",

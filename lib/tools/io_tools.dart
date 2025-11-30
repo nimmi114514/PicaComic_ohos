@@ -18,7 +18,7 @@ import 'package:pica_comic/network/cookie_jar.dart';
 import 'package:pica_comic/network/download.dart';
 import 'package:pica_comic/network/download_model.dart';
 import 'package:pica_comic/tools/io_extensions.dart';
-import 'package:zip_flutter/zip_flutter.dart';
+import 'package:pica_comic/tools/zip_utils.dart';
 
 import '../foundation/app.dart';
 
@@ -156,7 +156,7 @@ Future<bool> runningExportComic(ExportComicData data) async {
   final fileName = '${data.path}/${data.name}.zip';
   try {
     final path = Directory("${data.path}/${data.directory}");
-    var zipFile = ZipFile.open(fileName);
+    var zipFile = createZipWriter(fileName);
     String? currentDirName;
 
     void walk(String path) {
@@ -192,7 +192,7 @@ Future<bool> runningExportComics(List<ExportComicData> datas) async {
     if (File(result).existsSync()) {
       File(result).deleteSync();
     }
-    var zipFile = ZipFile.open(result);
+    var zipFile = createZipWriter(result);
     for (var data in datas) {
       final directory = Directory('${data.path}/${data.directory}');
 
@@ -297,7 +297,7 @@ Future<void> checkDownloadPath() async {
 
 Future<String?> _exportData(String path, String appdataString,
     String? downloadPath, String outPath) async {
-  var encode = ZipFile.open(outPath);
+  var encode = createZipWriter(outPath);
   try {
     var filePath = "$path${pathSep}appdata";
     var file = File(filePath);
@@ -395,7 +395,20 @@ Future<bool> runExportData(bool includeDownload) async {
       allowCancel: false,
     );
 
-    if (App.isMobile) {
+    if (PlatformUtils.isOhos) {
+      await downloadManager.init();
+      var downloadPath = downloadManager.path;
+      if (downloadPath == null || downloadPath.isEmpty) {
+        throw Exception("Download directory unavailable");
+      }
+      var targetFile = File("$downloadPath/userData.picadata");
+      if (await targetFile.exists()) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        targetFile = File("$downloadPath/userData_$timestamp.picadata");
+      }
+      await File(outPath).copy(targetFile.path);
+      await File(outPath).delete();
+    } else if (App.isMobile) {
       var params = SaveFileDialogParams(sourceFilePath: outPath);
       await FlutterFileDialog.saveFile(params: params);
       File(outPath).delete();
@@ -436,7 +449,7 @@ Future<bool> importData([String? filePath]) async {
   try {
     data = await compute<List<String>, String>((data) async {
       var path = data[0];
-      ZipFile.openAndExtract(data[1], "$path/dataTemp");
+      await extractZipFile(data[1], "$path/dataTemp");
       var downloadPath = Directory(data[2]);
       List<FileSystemEntity> contents = Directory("$path/dataTemp").listSync();
       for (FileSystemEntity item in contents) {
