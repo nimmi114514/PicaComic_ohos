@@ -194,6 +194,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "7.0.1"
+  file_picker_ohos:
+    dependency: "direct main"
+    description:
+      path: flutter_file_picker_ohos
+      relative: true
+    source: path
+    version: "1.0.1"
   file_selector:
     dependency: "direct main"
     description:

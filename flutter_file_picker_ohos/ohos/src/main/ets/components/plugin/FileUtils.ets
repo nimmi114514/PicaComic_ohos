@@ -16,7 +16,7 @@
 import { List } from '@kit.ArkTS';
 import { Log } from '@ohos/flutter_ohos';
 import { common, UIAbility, Want } from '@kit.AbilityKit';
-import { fileIo as fs } from '@kit.CoreFileKit';
+import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { FileInfo, FileInfoBuilder } from './FileInfo'
 import util from '@ohos.util';
 
@@ -47,63 +47,78 @@ export class FileUtils {
   static getFileName(uri: string, context?: common.UIAbilityContext): string {
     let result: string | null = null;
     try {
+      if (uri.startsWith("file://docs")) {
+        const trimmed = uri.endsWith("/") ? uri.substring(0, uri.length - 1) : uri;
+        result = trimmed.substring(trimmed.lastIndexOf("/") + 1);
+        return decodeURIComponent(result);
+      }
       if (uri.startsWith("file://") || uri.startsWith("/data")) {
         result = uri.substring(uri.lastIndexOf("/") + 1);
       }
     } catch (e) {
       Log.e(FileUtils.TAG, "Failed to handle file name: " + e.toString());
     }
-    return result as string
+    return (result ?? ("picked_" + Date.now().toString())) as string;
   }
 
   static async openFileStream(context: common.UIAbilityContext, uri: string,
     withData: boolean): Promise<FileInfo | null> {
     const fileInfo: FileInfoBuilder = new FileInfoBuilder();
+    const sourcePath: string = FileUtils.resolvePath(uri);
     const fileName: string = FileUtils.getFileName(uri, context) as string;
-    const path: string =
-      context.cacheDir + "/file_picker";
-    let inputFile: fs.File;
+    const cacheDir: string = context.cacheDir + "/file_picker";
+    let finalPath: string = cacheDir + "/" + fileName;
     try {
-      if (!await fs.access(path)) {
-        fs.mkdirSync(path, true);
+      if (!await fs.access(cacheDir)) {
+        fs.mkdirSync(cacheDir, true);
       }
-      inputFile = fs.openSync(uri);
-      if (inputFile == null) {
+      const decodedName = FileUtils.urlDecodeManual(fileName);
+      finalPath = FileUtils.replaceFileName(finalPath, fileName, decodedName);
+      let copied: boolean = false;
+      try {
+        fs.copyFileSync(sourcePath, finalPath);
+        copied = true;
+      } catch (e) {
+        Log.e(FileUtils.TAG, "copyFileSync failed: " + e.toString());
+      }
+      if (!copied) {
         return null;
       }
-      let outfilePath: string | null = null;
-      outfilePath = path + "/" + fileName;
-      let file = fs.openSync(outfilePath, fs.OpenMode.CREATE);
-      let newName: string = FileUtils.urlDecodeManual(fileName);
-      let finalPath = FileUtils.replaceFileName(outfilePath, fileName, newName)
-      fs.copyFileSync(uri, outfilePath);
-      fs.renameSync(outfilePath, finalPath)
-      uri = FileUtils.replaceFileName(uri, fileName, newName)
       if (withData) {
-        FileUtils.loadData(inputFile, fileInfo);
+        const file = fs.openSync(finalPath, fs.OpenMode.READ_ONLY);
+        FileUtils.loadData(file, fileInfo);
+        fs.closeSync(file);
       }
-      // 创建一个 4096 字节的缓冲区
-      let buf = new ArrayBuffer(4096);
-      // 循环读取文件，直到读取完毕
-      let totalRead = 0;
-      while (true) {
-        let size = fs.readSync(file.fd, buf);
-        if (size <= 0) {
-          break;
-        } // 读取完毕或遇到错误
-        totalRead += size;
-      }
+      const stat = fs.statSync(finalPath);
       fileInfo
         .withPath(finalPath)
-        .withName(newName)
-        .withUri(uri)
-        .withSize(totalRead)
-      fs.closeSync(file);
-      fs.closeSync(inputFile);
+        .withName(decodedName)
+        .withUri(FileUtils.replaceFileName(uri, fileName, decodedName))
+        .withSize(stat.size);
     } catch (err) {
       Log.e(FileUtils.TAG, "open uri file failed err:" + err)
     }
     return fileInfo.build()
+  }
+
+  // 将各种 file://docs/file:// 等 URI 解析成真实路径
+  static resolvePath(uri: string): string {
+    if (!uri) {
+      return uri;
+    }
+    try {
+      if (uri.startsWith("file://docs")) {
+        // HarmonyOS 文档沙箱前缀 -> 物理路径
+        const decoded = decodeURIComponent(uri.replace("file://docs", ""));
+        return decoded.startsWith("/") ? decoded : ("/" + decoded);
+      }
+      if (uri.startsWith("file://")) {
+        return new fileUri.FileUri(uri).path;
+      }
+      return decodeURIComponent(uri);
+    } catch (_) {
+      return uri;
+    }
   }
 
   //单选 将中文URL编码（也称为百分号编码或百分比编码每个字符为UTF-8编码）转为正常中文
@@ -170,7 +185,7 @@ export class FileUtils {
       let stat = fs.statSync(file.fd);
       let buf = new ArrayBuffer(stat.size == 0 ? 1 : stat.size);
       let fileSize: number = fs.readSync(file.fd, buf);
-      let bytes = new Uint8Array(buf);
+      let bytes = new Uint8Array(buf.slice(0, fileSize));
       fileInfo
         .withData(bytes)
         .withSize(fileSize);

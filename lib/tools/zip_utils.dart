@@ -19,14 +19,19 @@ ZipArchiveWriter createZipWriter(String outputPath) {
 
 Future<void> extractZipFile(String zipFilePath, String destinationDir) async {
   if (PlatformUtils.isOhos) {
-    final input = archive.InputFileStream(zipFilePath);
-    try {
-      final archive.Archive archiveData =
-          archive.ZipDecoder().decodeBuffer(input);
-      Directory(destinationDir).createSync(recursive: true);
-      archive.extractArchiveToDisk(archiveData, destinationDir);
-    } finally {
-      input.close();
+    // 在 OHOS 上直接读入内存解压，避免 InputFileStream 可能的兼容问题
+    final bytes = File(zipFilePath).readAsBytesSync();
+    final archiveData = archive.ZipDecoder().decodeBytes(bytes, verify: true);
+    Directory(destinationDir).createSync(recursive: true);
+    for (final file in archiveData) {
+      final outPath = '$destinationDir/${file.name}';
+      if (file.isFile) {
+        File(outPath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(file.content as List<int>);
+      } else {
+        Directory(outPath).createSync(recursive: true);
+      }
     }
     return;
   }

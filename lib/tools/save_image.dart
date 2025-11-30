@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
+import 'package:file_picker_ohos/file_picker_ohos.dart' as fp;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/log.dart';
@@ -7,6 +8,7 @@ import 'package:pica_comic/tools/file_type.dart';
 import 'package:pica_comic/tools/io_tools.dart';
 import 'package:pica_comic/tools/translations.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 
 import '../foundation/app.dart';
 
@@ -25,6 +27,17 @@ void saveImage(File file) async {
       name: fileName,
     );
     showToast(message: "已保存".tl);
+  } else if (PlatformUtils.isOhos) {
+    try {
+      await fp.FilePicker.platform.saveFile(
+        fileName: fileName,
+        type: fp.FileType.any,
+        bytes: data,
+      );
+      showToast(message: "已保存".tl);
+    } catch (e, s) {
+      LogManager.addLog(LogLevel.error, "Save Image", "$e\n$s");
+    }
   } else if (App.isDesktop) {
     try {
       final String? path =

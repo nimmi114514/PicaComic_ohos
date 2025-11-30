@@ -4,7 +4,7 @@ version: 1.0.1
 repository: https://gitee.com/openharmony-sig/fluttertpc_file_picker
 
 environment:
-  sdk: '>=2.19.6 <3.0.0'
+  sdk: '>=3.3.0 <4.0.0'
   flutter: ">=2.5.0"
 
 dependencies:

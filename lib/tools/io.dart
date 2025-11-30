@@ -9,8 +9,10 @@ import 'package:pica_comic/tools/ext.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart' as s;
 import 'package:file_selector/file_selector.dart' as file_selector;
+import 'package:file_picker_ohos/file_picker_ohos.dart' as fp;
 import 'package:pica_comic/tools/file_type.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pica_comic/foundation/platform_utils.dart';
 
 import '../foundation/app.dart';
 
@@ -273,13 +275,16 @@ class IOSDirectoryPicker {
 Future<FileSelectResult?> selectFile({required List<String> ext}) async {
   IO._isSelectingFiles = true;
   try {
-    var extensions = App.isMacOS || App.isIOS ? null : ext;
-    file_selector.XTypeGroup typeGroup = file_selector.XTypeGroup(
-      label: 'files',
-      extensions: extensions,
-    );
     FileSelectResult? file;
-    if (App.isAndroid) {
+    if (PlatformUtils.isOhos) {
+      final result = await fp.FilePicker.platform.pickFiles(
+        type: fp.FileType.custom,
+        allowedExtensions: ext,
+        allowMultiple: false,
+      );
+      if (result == null || result.files.isEmpty) return null;
+      file = FileSelectResult(result.files.first.path!);
+    } else if (App.isAndroid) {
       const selectFileChannel = MethodChannel("venera/select_file");
       String mimeType = "*/*";
       if (ext.length == 1) {
@@ -295,6 +300,11 @@ Future<FileSelectResult?> selectFile({required List<String> ext}) async {
       if (filePath == null) return null;
       file = FileSelectResult(filePath);
     } else {
+      var extensions = App.isMacOS || App.isIOS ? null : ext;
+      file_selector.XTypeGroup typeGroup = file_selector.XTypeGroup(
+        label: 'files',
+        extensions: extensions,
+      );
       var xFile = await file_selector.openFile(
         acceptedTypeGroups: <file_selector.XTypeGroup>[typeGroup],
       );
@@ -318,7 +328,12 @@ Future<FileSelectResult?> selectFile({required List<String> ext}) async {
 Future<String?> selectDirectory() async {
   IO._isSelectingFiles = true;
   try {
-    var path = await file_selector.getDirectoryPath();
+    String? path;
+    if (PlatformUtils.isOhos) {
+      path = await fp.FilePicker.platform.getDirectoryPath();
+    } else {
+      path = await file_selector.getDirectoryPath();
+    }
     return path;
   } finally {
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -350,6 +365,12 @@ Future<void> saveFile(
     if (App.isMobile) {
       final params = SaveFileDialogParams(sourceFilePath: file!.path);
       await FlutterFileDialog.saveFile(params: params);
+    } else if (PlatformUtils.isOhos) {
+      await fp.FilePicker.platform.saveFile(
+        fileName: filename,
+        type: fp.FileType.any,
+        bytes: await file!.readAsBytes(),
+      );
     } else {
       final result = await file_selector.getSaveLocation(
         suggestedName: filename,

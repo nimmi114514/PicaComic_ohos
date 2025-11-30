@@ -16,7 +16,8 @@
     "url_launcher_ohos": "file:../har/url_launcher_ohos.har",
     "share_plus": "file:../har/share_plus.har",
     "image_gallery_saver": "file:../har/image_gallery_saver.har",
-    "sqflite": "file:../sqflite"
+    "sqflite": "file:../sqflite",
+    "file_picker_ohos": "file:../har/file_picker_ohos.har"
   },
   "devDependencies": {
     "@ohos/hypium": "1.0.6"

@@ -1,4 +1,5 @@
 import { FlutterEngine, Log } from '@ohos/flutter_ohos';
+import FilePickerPlugin from 'file_picker_ohos';
 
 /**
  * Generated file. Do not edit.
@@ -12,6 +13,7 @@ export class GeneratedPluginRegistrant {
 
   static registerWith(flutterEngine: FlutterEngine) {
     try {
+      flutterEngine.getPlugins()?.add(new FilePickerPlugin());
     } catch (e) {
       Log.e(
         TAG,
