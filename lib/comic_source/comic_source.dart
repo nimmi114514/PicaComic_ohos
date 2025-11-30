@@ -208,6 +208,8 @@ class ComicSource {
   final Widget Function(BuildContext, BaseComic, List<ComicTileMenuOption>?)?
       comicTileBuilderOverride;
 
+  final bool enableTagsTranslate;
+
   ComicSource(
       this.name,
       this.key,
@@ -227,7 +229,8 @@ class ComicSource {
       this.url,
       this.version,
       this.commentsLoader,
-      this.sendCommentFunc)
+      this.sendCommentFunc,
+      this.enableTagsTranslate)
       : initData = null,
         comicTileBuilderOverride = null,
         idMatcher = null,
@@ -257,6 +260,7 @@ class ComicSource {
     this.comicTileBuilderOverride,
     this.idMatcher,
     this.comicPageBuilder,
+    this.enableTagsTranslate = true,
   });
 
   ComicSource.unknown(this.key)
@@ -281,7 +285,8 @@ class ComicSource {
         initData = null,
         comicTileBuilderOverride = null,
         idMatcher = null,
-        comicPageBuilder = null;
+        comicPageBuilder = null,
+        enableTagsTranslate = false;
 }
 
 class AccountConfig {
