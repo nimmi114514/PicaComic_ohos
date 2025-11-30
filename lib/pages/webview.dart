@@ -11,7 +11,7 @@ import 'package:pica_comic/foundation/ui_mode.dart';
 import 'package:pica_comic/network/http_client.dart';
 import 'package:pica_comic/tools/extensions.dart';
 import 'package:pica_comic/tools/translations.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pica_comic/tools/app_url_launcher.dart';
 
 export 'package:flutter_inappwebview/flutter_inappwebview.dart' show WebUri, URLRequest;
 
@@ -86,7 +86,7 @@ class _AppWebviewState extends State<AppWebview> {
             ), items: [
               PopupMenuItem(
                 child: Text("在浏览器中打开".tl),
-                onTap: () async => launchUrlString((await controller?.getUrl())!.path),
+                onTap: () async => AppUrlLauncher.launchExternalUrl((await controller?.getUrl())!.path),
               ),
               PopupMenuItem(
                 child: Text("复制链接".tl),

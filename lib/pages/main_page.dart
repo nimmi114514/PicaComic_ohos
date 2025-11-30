@@ -13,7 +13,7 @@ import 'explore_page.dart';
 import 'favorites/main_favorites_page.dart';
 import 'pre_search_page.dart';
 import 'settings/settings_page.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pica_comic/tools/app_url_launcher.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/network/update.dart';
 import 'me_page.dart';
@@ -164,7 +164,7 @@ class MainPageState extends State<MainPage> {
               TextButton(
                   onPressed: () {
                     getDownloadUrl().then((s) {
-                      launchUrlString(s, mode: LaunchMode.externalApplication);
+                      AppUrlLauncher.launchExternalUrl(s);
                     });
                   },
                   child: Text("下载".tl))

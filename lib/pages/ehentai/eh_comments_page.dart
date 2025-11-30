@@ -12,7 +12,7 @@ import 'package:pica_comic/tools/app_links.dart';
 import 'package:pica_comic/tools/extensions.dart';
 import 'package:pica_comic/tools/time.dart';
 import 'package:pica_comic/tools/translations.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pica_comic/tools/app_url_launcher.dart';
 
 class CommentsPageLogic extends StateController {
   bool isLoading = true;
@@ -366,7 +366,7 @@ class _EhComment extends StatelessWidget {
       App.globalBack();
       handleAppLinks(Uri.parse(link));
     } else {
-      launchUrlString(link);
+      AppUrlLauncher.launchExternalUrl(link);
     }
   }
 

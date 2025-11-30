@@ -1,5 +1,6 @@
 import { FlutterAbility, FlutterEngine } from '@ohos/flutter_ohos';
 import DownloadBridgePlugin from '../plugins/download/DownloadBridgePlugin';
+import UrlLauncherPlugin from '../plugins/url_launcher/UrlLauncherPlugin';
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
 import hilog from '@ohos.hilog';
 import type Want from '@ohos.app.ability.Want';
@@ -26,6 +27,7 @@ export default class EntryAbility extends FlutterAbility {
     super.configureFlutterEngine(flutterEngine);
     GeneratedPluginRegistrant.registerWith(flutterEngine);
     flutterEngine.getPlugins()?.add(new DownloadBridgePlugin());
+    flutterEngine.getPlugins()?.add(new UrlLauncherPlugin());
   }
 
   private async requestStoragePermissions(): Promise<void> {

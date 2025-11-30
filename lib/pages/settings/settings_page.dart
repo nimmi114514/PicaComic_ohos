@@ -25,7 +25,7 @@ import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/pages/logs_page.dart';
 import 'package:pica_comic/tools/extensions.dart';
 import 'package:pica_comic/tools/io_tools.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pica_comic/tools/app_url_launcher.dart';
 import '../../comic_source/comic_source.dart';
 import '../../foundation/app.dart';
 import '../../foundation/local_favorites.dart';
@@ -673,7 +673,13 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           "V$appVersion",
           style: TextStyle(fontSize: 16),
         ),
-        Text("Pica Comic HarmonyOS 适配版，基于社区开源项目二次开发。".tl),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            "Pica Comic HarmonyOS 适配版，基于社区开源项目二次开发。".tl,
+            textAlign: TextAlign.center,
+          ),
+        ),
         const SizedBox(
           height: 16,
         ),
@@ -697,17 +703,15 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
         ListTile(
           leading: const Icon(Icons.code),
           title: Text("项目地址".tl),
-          onTap: () => launchUrlString(
-              "https://github.com/WJ-T/PicaComic_ohos",
-              mode: LaunchMode.externalApplication),
+          onTap: () => AppUrlLauncher.launchExternalUrl(
+              "https://github.com/WJ-T/PicaComic_ohos"),
           trailing: const Icon(Icons.open_in_new),
         ),
         ListTile(
           leading: const Icon(Icons.comment_outlined),
           title: Text("问题反馈 (Github)".tl),
-          onTap: () => launchUrlString(
-              "https://github.com/WJ-T/PicaComic_ohos/issues",
-              mode: LaunchMode.externalApplication),
+          onTap: () => AppUrlLauncher.launchExternalUrl(
+              "https://github.com/WJ-T/PicaComic_ohos/issues"),
           trailing: const Icon(Icons.open_in_new),
         ),
         // ListTile(

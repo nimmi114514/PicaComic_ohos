@@ -22,10 +22,8 @@ void findUpdate(BuildContext context) {
                         child: Text("取消".tl)),
                     TextButton(
                         onPressed: () {
-                          getDownloadUrl().then((s) {
-                            launchUrlString(s,
-                                mode: LaunchMode.externalApplication);
-                          });
+                          getDownloadUrl()
+                              .then((s) => AppUrlLauncher.launchExternalUrl(s));
                         },
                         child: Text("下载".tl))
                   ],

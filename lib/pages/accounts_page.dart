@@ -5,7 +5,7 @@ import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/ui_mode.dart';
 import 'package:pica_comic/tools/translations.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pica_comic/tools/app_url_launcher.dart';
 
 class AccountsPageLogic extends StateController {
   final _reLogin = <String, bool>{};
@@ -201,7 +201,7 @@ class _LoginPageState extends State<_LoginPage> {
         const Spacer(),
         if (widget.registerWebsite != null)
           TextButton(
-            onPressed: () => launchUrlString(widget.registerWebsite!),
+            onPressed: () => AppUrlLauncher.launchExternalUrl(widget.registerWebsite!),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
