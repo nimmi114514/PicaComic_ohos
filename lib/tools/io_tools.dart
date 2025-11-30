@@ -14,6 +14,7 @@ import 'package:pica_comic/foundation/history.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/foundation/platform_utils.dart';
+import 'package:pica_comic/foundation/ohos_file_picker.dart';
 import 'package:pica_comic/network/cookie_jar.dart';
 import 'package:pica_comic/network/download.dart';
 import 'package:pica_comic/network/download_model.dart';
@@ -427,7 +428,9 @@ Future<bool> importData([String? filePath]) async {
   final enableCheck = filePath != null;
   var path = (await getApplicationSupportDirectory()).path;
   if (filePath == null) {
-    if (App.isMobile) {
+    if (PlatformUtils.isOhos) {
+      filePath = await OhosFilePicker.pickPicadataFile();
+    } else if (App.isMobile) {
       var params = const OpenFileDialogParams();
       filePath = await FlutterFileDialog.pickFile(params: params);
     } else {
