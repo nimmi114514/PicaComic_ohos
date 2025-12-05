@@ -359,10 +359,6 @@ class HistoryManager {
   }
 
   ///退出阅读器时调用此函数, 修改阅读位置
-  Timer? _debounceTimer;
-  History? _pendingHistory;
-  bool _pendingUpdateMePage = false;
-
   Future<void> saveReadHistory(History history,
       [bool updateMePage = true]) async {
     if (!_ensureDbAvailable()) {
@@ -373,19 +369,17 @@ class HistoryManager {
         set time = ${DateTime.now().millisecondsSinceEpoch}, ep = ?, page = ?, readEpisode = ?, max_page = ?
         where target == ?;
     """, [
-      h.ep,
-      h.page,
-      h.readEpisode.join(','),
-      h.maxPage,
-      h.target
+      history.ep,
+      history.page,
+      history.readEpisode.join(','),
+      history.maxPage,
+      history.target
     ]);
-    if (_pendingUpdateMePage) {
+    if (updateMePage) {
       scheduleMicrotask(() {
         StateController.findOrNull(tag: "me_page")?.update();
       });
     }
-    _pendingUpdateMePage = false;
-    _pendingHistory = null;
   }
 
   void clearHistory() {
