@@ -428,17 +428,52 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
             leading: const Icon(Icons.add_circle_outline),
             title: Text("导入字体".tl),
             onTap: () async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['ttf', 'otf'],
-              );
+              try {
+                FilePickerResult? result = await FilePicker.platform.pickFiles(
+                  // 先不用过滤，减少 unknown_path 触发概率
+                  allowMultiple: false,
+                  withData: true,
+                );
+                // fallback：再次尝试不加载字节
+                if (result == null || result.files.isEmpty) {
+                  result = await FilePicker.platform.pickFiles(
+                    allowMultiple: false,
+                    withData: false,
+                  );
+                }
+                if (result == null || result.files.isEmpty) return;
 
-              if (result != null && result.files.single.path != null) {
-                var name =
-                    await FontManager().addFont(result.files.single.path!);
-                if (name != null) {
+                final file = result.files.single;
+                final lowerName = file.name.toLowerCase();
+                if (!(lowerName.endsWith('.ttf') || lowerName.endsWith('.otf'))) {
+                  context.showMessage(message: "仅支持 .ttf / .otf 字体文件".tl);
+                  return;
+                }
+
+                String tempPath = file.path ?? '';
+                // 如果只有 bytes，没有可读路径，先落盘到可写目录
+                if ((tempPath.isEmpty || !File(tempPath).existsSync()) &&
+                    file.bytes != null &&
+                    file.bytes!.isNotEmpty) {
+                  final dir = await getApplicationSupportDirectory();
+                  final tmp = File(
+                      '${dir.path}/font_${DateTime.now().millisecondsSinceEpoch}_${file.name}');
+                  await tmp.writeAsBytes(file.bytes!, flush: true);
+                  tempPath = tmp.path;
+                }
+                if (tempPath.isEmpty || !File(tempPath).existsSync()) {
+                  context.showMessage(message: "导入字体失败: unknown_path".tl);
+                  return;
+                }
+                final name = await FontManager().addFont(tempPath);
+                if (name != null && mounted) {
                   setState(() {});
                 }
+              } on PlatformException catch (e) {
+                if (e.code == 'unknown_activity' || e.code == 'unknown_activity_error') {
+                  return;
+                }
+                context.showMessage(message: "导入字体失败: ${e.code}".tl);
               }
             },
           ),

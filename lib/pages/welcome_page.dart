@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
@@ -474,16 +476,53 @@ class _More extends StatelessWidget with _WelcomePageComponents {
             leading: const Icon(Icons.add_circle_outline),
             title: Text("导入字体".tl),
             onTap: () async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['ttf', 'otf'],
-              );
-
-              if (result != null && result.files.single.path != null) {
-                var name =
-                    await FontManager().addFont(result.files.single.path!);
+              try {
+                FilePickerResult? result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: const ['ttf', 'otf'],
+                  withData: true,
+                  allowMultiple: false,
+                );
+                // 如果第一次因路径问题失败，再尝试一次不带后缀过滤
+                if (result == null) {
+                  try {
+                    result = await FilePicker.platform.pickFiles(
+                      withData: true,
+                      allowMultiple: false,
+                    );
+                  } on PlatformException {
+                    // ignore and fall through
+                  }
+                }
+                if (result == null || result.files.isEmpty) return;
+                final file = result.files.single;
+                final lowerName = file.name.toLowerCase();
+                if (!(lowerName.endsWith('.ttf') || lowerName.endsWith('.otf'))) {
+                  if (context.mounted) {
+                    context.showMessage(message: "仅支持 .ttf / .otf 字体文件".tl);
+                  }
+                  return;
+                }
+                String tempPath = file.path ?? '';
+                if ((tempPath.isEmpty || !File(tempPath).existsSync()) &&
+                    file.bytes != null &&
+                    file.bytes!.isNotEmpty) {
+                  final tmp = File(
+                      '${App.dataPath}/fonts/tmp_${DateTime.now().millisecondsSinceEpoch}_${file.name}');
+                  tmp.createSync(recursive: true);
+                  tmp.writeAsBytesSync(file.bytes!, flush: true);
+                  tempPath = tmp.path;
+                }
+                final name = await FontManager().addFont(tempPath);
                 if (name != null) {
                   MyApp.updater?.call();
+                }
+              } on PlatformException catch (e) {
+                if (e.code == 'unknown_activity' || e.code == 'unknown_activity_error') {
+                  return;
+                }
+                if (context.mounted) {
+                  context.showMessage(message: "导入字体失败: ${e.code}".tl);
                 }
               }
             },
