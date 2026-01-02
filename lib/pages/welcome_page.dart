@@ -1,3 +1,4 @@
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/material.dart';
 import 'package:pica_comic/base.dart';
 import 'package:pica_comic/comic_source/comic_source.dart';
@@ -6,6 +7,7 @@ import 'package:pica_comic/pages/main_page.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/tools/translations.dart';
+import '../tools/font_manager.dart';
 import 'settings/settings_page.dart';
 
 import '../main.dart';
@@ -114,6 +116,7 @@ mixin class _WelcomePageComponents {
           Button.filled(
               padding: const EdgeInsets.fromLTRB(24, 6, 12, 6),
               onPressed: () async {
+
                 bool reloadSuccess = true;
                 try {
                   await ComicSource.reload();
@@ -129,6 +132,7 @@ mixin class _WelcomePageComponents {
                 if (!reloadSuccess) {
                   context.showMessage(
                       message: "刷新漫画源失败，部分功能可能异常，请查看日志。");
+
                 }
               },
               disabled: !canNext,
@@ -435,6 +439,56 @@ class _More extends StatelessWidget with _WelcomePageComponents {
           onTap: () => showPopUpWidget(context, const AccountsPage()),
           trailing: const Icon(Icons.arrow_right),
         ),
+
+
+          ListTile(
+            leading: const Icon(Icons.font_download),
+            title: Text("字体".tl),
+            trailing: Select(
+              initialValue: (() {
+                while (appdata.settings.length <= 95) {
+                  appdata.settings.add("");
+                }
+                var font = appdata.settings[95];
+                if (font.isEmpty) return 0;
+                var index = FontManager().availableFonts.indexOf(font);
+                return index == -1 ? 0 : index + 1;
+              })(),
+              values: ["Default"] + FontManager().availableFonts,
+              onChange: (i) {
+                while (appdata.settings.length <= 95) {
+                  appdata.settings.add("");
+                }
+                if (i == 0) {
+                  appdata.settings[95] = "";
+                } else {
+                  appdata.settings[95] = FontManager().availableFonts[i - 1];
+                }
+                appdata.updateSettings();
+                MyApp.updater?.call();
+              },
+              width: 140,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline),
+            title: Text("导入字体".tl),
+            onTap: () async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['ttf', 'otf'],
+              );
+
+              if (result != null && result.files.single.path != null) {
+                var name =
+                    await FontManager().addFont(result.files.single.path!);
+                if (name != null) {
+                  MyApp.updater?.call();
+                }
+              }
+            },
+          ),
+
         ListTile(
           leading: const Icon(
             Icons.settings,

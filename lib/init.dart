@@ -36,6 +36,7 @@ import 'foundation/ohos_shared_preferences_store.dart';
 import 'foundation/ohos_sqlite.dart';
 import 'foundation/platform_utils.dart';
 import 'network/nhentai_network/nhentai_main_network.dart';
+import 'package:pica_comic/tools/font_manager.dart';
 
 Future<void> init() async {
   try {
@@ -46,39 +47,44 @@ Future<void> init() async {
       SharedPreferencesStorePlatform.instance =
           OhosSharedPreferencesStore("${App.dataPath}/shared_prefs.json");
     }
+    await FontManager().init();
+    await FontManager().init();
     io.File? logFile = io.File("${App.dataPath}/log.txt");
-    if(App.isAndroid) {
+    if (App.isAndroid) {
       var externalDirectory = await getExternalStorageDirectory();
       if (externalDirectory != null) {
         logFile = io.File("${externalDirectory.path}/log.txt");
       }
     }
-    if(App.isIOS) {
+    if (App.isIOS) {
       logFile = null;
     }
-    if(logFile?.existsSync() ?? false) {
+    if (logFile?.existsSync() ?? false) {
       await logFile?.delete();
     }
     LogManager.logFile = logFile;
     LogManager.addLog(LogLevel.info, "App Status", "Start initialization.");
-    
+
     // 安全读取应用数据
     try {
       var dataReadSuccess = await appdata.readData();
       if (!dataReadSuccess) {
-        LogManager.addLog(LogLevel.warning, "Init", "Failed to read some app data, using defaults");
+        LogManager.addLog(LogLevel.warning, "Init",
+            "Failed to read some app data, using defaults");
       }
     } catch (e) {
-      LogManager.addLog(LogLevel.error, "Init", "Critical error reading app data: $e");
+      LogManager.addLog(
+          LogLevel.error, "Init", "Critical error reading app data: $e");
       // 尝试重新初始化应用数据
       try {
         appdata = Appdata();
         await appdata.readData();
       } catch (e2) {
-        LogManager.addLog(LogLevel.error, "Init", "Failed to reinitialize app data: $e2");
+        LogManager.addLog(
+            LogLevel.error, "Init", "Failed to reinitialize app data: $e2");
       }
     }
-    
+
     SingleInstanceCookieJar("${App.dataPath}/cookies.db");
     HttpProxyServer.createConfigFile();
     if (appdata.settings[58] == "1") {
@@ -88,7 +94,7 @@ Future<void> init() async {
     if (App.isAndroid) {
       final appLinks = AppLinks();
       appLinks.allUriLinkStream.listen((uri) async {
-        while(App.mainNavigatorKey == null) {
+        while (App.mainNavigatorKey == null) {
           await Future.delayed(const Duration(milliseconds: 100));
         }
         handleAppLinks(uri);
@@ -124,12 +130,13 @@ Future<void> init() async {
   } catch (e, s) {
     LogManager.addLog(
         LogLevel.error, "Init", "App initialization failed!\n$e$s");
-    
+
     // 尝试基本初始化，确保应用可以启动
     try {
       appdata = Appdata();
       await appdata.readData();
-      LogManager.addLog(LogLevel.info, "Init", "Basic initialization completed");
+      LogManager.addLog(
+          LogLevel.info, "Init", "Basic initialization completed");
     } catch (e2, s2) {
       LogManager.addLog(
           LogLevel.error, "Init", "Basic initialization failed!\n$e2$s2");
@@ -249,7 +256,7 @@ Future<void> _checkAccountData() async {
     await picacg.saveData();
     await s.remove('picacgAccount');
   }
-  if(s.getString("jmName") != null) {
+  if (s.getString("jmName") != null) {
     var account = s.getString('jmName');
     var pwd = s.getString('jmPwd');
     jm.data['account'] = [account, pwd];
@@ -257,13 +264,13 @@ Future<void> _checkAccountData() async {
     await s.remove("jmName");
     await jm.saveData();
   }
-  if(s.getString("ehAccount") != null) {
+  if (s.getString("ehAccount") != null) {
     ehentai.data['account'] = 'ok';
     ehentai.data['name'] = s.getString("ehAccount")!;
     await s.remove("ehAccount");
     await ehentai.saveData();
   }
-  if(s.getString('htName') != null) {
+  if (s.getString('htName') != null) {
     var account = s.getString('htName');
     var pwd = s.getString('htPwd');
     htManga.data['account'] = [account, pwd];
@@ -272,7 +279,7 @@ Future<void> _checkAccountData() async {
     await htManga.saveData();
   }
   NhentaiNetwork().init();
-  if(NhentaiNetwork().logged) {
+  if (NhentaiNetwork().logged) {
     nhentai.data['account'] = 'ok';
     await nhentai.saveData();
   }

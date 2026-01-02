@@ -338,16 +338,34 @@ class ComicReadingPageLogic extends StateController {
   }
 
   bool isFullScreen = false;
+  Rect? _preFullscreenRect;
+  bool _wasMaximized = false;
 
-  void fullscreen(){
-    const channel = MethodChannel("pica_comic/full_screen");
-    channel.invokeMethod("set", !isFullScreen);
-    isFullScreen = !isFullScreen;
-    focusNode.requestFocus();
-
-    if(isFullScreen){
+  void fullscreen() async {
+    if (App.isDesktop) {
+      if (isFullScreen) {
+        isFullScreen = false;
+        await windowManager.setFullScreen(false);
+        if (_wasMaximized) {
+          await windowManager.maximize();
+        } else if (_preFullscreenRect != null) {
+          await windowManager.setBounds(_preFullscreenRect!);
+        }
+      } else {
+        isFullScreen = true;
+        _wasMaximized = await windowManager.isMaximized();
+        if (!_wasMaximized) {
+          _preFullscreenRect = await windowManager.getBounds();
+        }
+        await windowManager.setFullScreen(true);
+      }
     } else {
+      const channel = MethodChannel("pica_comic/full_screen");
+      channel.invokeMethod("set", !isFullScreen);
+      isFullScreen = !isFullScreen;
     }
+    WindowFrame.of(App.globalContext!).setWindowFrame(!isFullScreen);
+    focusNode.requestFocus();
   }
 
   void handleKeyboard(KeyEvent event) {
