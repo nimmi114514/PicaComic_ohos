@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "com.github.pacalini.pica_comic",
     "vendor": "Pacalini",
-    "versionCode": 46302,
-    "versionName": "4.3.2",
+    "versionCode": 46303,
+    "versionName": "4.3.3",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
   }

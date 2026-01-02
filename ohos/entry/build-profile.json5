@@ -3,6 +3,9 @@
   "buildOption": {
     "arkOptions": {
       "apPath": "./entry.ap"
+    },
+    externalNativeOptions: {
+      abiFilters: ["arm64-v8a"],
     }
   },
 

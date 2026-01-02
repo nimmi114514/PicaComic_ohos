@@ -23,11 +23,22 @@ if [[ "${OHOS_SDK:-}" == "" ]]; then
   exit 1
 fi
 
+# Support both SDK layouts:
+# 1) <sdk>/openharmony/native/...
+# 2) <sdk>/native/... (e.g. some manual extractions / DevEco variants / exFAT where symlinks are blocked)
 if [[ -d "$OHOS_SDK/default" ]]; then
   OHOS_SDK="$OHOS_SDK/default"
 fi
 
-OHOS_NDK="$OHOS_SDK/openharmony/native"
+if [[ -d "$OHOS_SDK/openharmony/native" ]]; then
+  OHOS_NDK="$OHOS_SDK/openharmony/native"
+elif [[ -d "$OHOS_SDK/native" ]]; then
+  OHOS_NDK="$OHOS_SDK/native"
+else
+  echo "Cannot find OpenHarmony NDK under $OHOS_SDK (expected openharmony/native or native)" >&2
+  exit 1
+fi
+
 LLVM_BIN="$OHOS_NDK/llvm/bin"
 SYSROOT="$OHOS_NDK/sysroot"
 SRC_DIR="$PROJECT_ROOT/flutter_qjs/cxx"
