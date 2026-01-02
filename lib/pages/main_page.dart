@@ -126,16 +126,14 @@ class MainPageState extends State<MainPage> {
   }
 
   void _checkUpdates() async {
-    var lastCheck = await appdata.readLastCheckUpdate();
-    if (lastCheck != null) {
-      if (DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(lastCheck)).inDays < 1) {
-        return;
-      }
-    }
     if (appdata.settings[2] != "1") {
       return;
     }
     var res = await checkUpdate();
+    if (res == null) {
+      // 网络异常时不记录时间，确保下次启动还能再次尝试
+      return;
+    }
     appdata.writeLastCheckUpdate(DateTime.now().millisecondsSinceEpoch);
     if (res != true) return;
     var info = await getUpdatesInfo();
