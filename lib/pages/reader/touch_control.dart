@@ -50,26 +50,17 @@ class ScrollManager {
     }
     moveOffset = null;
     startTime = null;
-    if (logic.fABValue < 58) {
-      logic.fABValue = 0;
-      logic.update(["FAB"]);
-    } else if (logic.fABValue >= 58) {
-      logic.fABValue = 0;
-      logic.jumpToNextChapter();
-    }
   }
 
   /// handle pointer move event
   void addOffset(Offset value) {
-    if (logic.scrollController.offset ==
-            logic.scrollController.position.maxScrollExtent &&
-        logic.photoViewController.scale == 1 &&
-        logic.showFloatingButtonValue == 1) {
-      logic.fABValue -= value.dy / 3;
-      logic.update(["FAB"]);
-      return;
-    }
     if (logic.photoViewController.scale == 1) {
+      // 未放大时列表自身负责滚动, 到达章节边界后继续拖动则直接切章。
+      if (value.dy < 0 && logic.isAtChapterEnd) {
+        logic.jumpToNextChapter();
+      } else if (value.dy > 0 && logic.isAtChapterStart) {
+        logic.jumpToLastChapter();
+      }
       return;
     }
     if (moveOffset != null) {

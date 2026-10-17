@@ -6,7 +6,6 @@ import 'package:pica_comic/foundation/log.dart';
 import 'package:pica_comic/network/jm_network/jm_network.dart';
 import 'package:pica_comic/network/download.dart';
 import 'package:pica_comic/network/webdav.dart';
-import 'package:pica_comic/utils/extensions.dart';
 import 'package:pica_comic/utils/io_tools.dart';
 import 'package:pica_comic/utils/notification.dart';
 import 'package:pica_comic/foundation/history.dart';
@@ -112,7 +111,7 @@ class Appdata {
     "6", //79 下载并行
     "1", //80 启动时检查自定义漫画源的更新
     "0", //81 使用深色背景
-    "111111", //82 内置漫画源启用状态,
+    "000000", //82 内置漫画源启用状态,
     "1", //83 完全隐藏屏蔽的作品
     "0", //84 纯黑色模式
     "www.cdntwice.org,www.cdnsha.org,www.cdnaspa.cc,www.cdnntr.cc", //85 jm api domains
@@ -242,6 +241,51 @@ class Appdata {
     } else {
       var s = await SharedPreferences.getInstance();
       await s.setInt("lastCheckUpdate", time);
+    }
+  }
+
+  Future<int?> readLastComicSourceCheck() async {
+    if (Platform.isAndroid) {
+      try {
+        var externalDirectory = await getExternalStorageDirectory();
+        if (externalDirectory != null) {
+          var file =
+              File("${externalDirectory.path}/lastComicSourceCheck.txt");
+          if (await file.exists()) {
+            var content = await file.readAsString();
+            return int.tryParse(content);
+          }
+        }
+      } catch (e) {
+        LogManager.addLog(LogLevel.error, "Appdata.readLastComicSourceCheck",
+            "Failed to read lastComicSourceCheck: $e");
+      }
+      return null;
+    } else {
+      var s = await SharedPreferences.getInstance();
+      return s.getInt("lastComicSourceCheck");
+    }
+  }
+
+  void writeLastComicSourceCheck(int time) async {
+    if (Platform.isAndroid) {
+      try {
+        var externalDirectory = await getExternalStorageDirectory();
+        if (externalDirectory != null) {
+          var file =
+              File("${externalDirectory.path}/lastComicSourceCheck.txt");
+          if (!await file.exists()) {
+            await file.create();
+          }
+          await file.writeAsString(time.toString());
+        }
+      } catch (e) {
+        LogManager.addLog(LogLevel.error, "Appdata.writeLastComicSourceCheck",
+            "Failed to write lastComicSourceCheck: $e");
+      }
+    } else {
+      var s = await SharedPreferences.getInstance();
+      await s.setInt("lastComicSourceCheck", time);
     }
   }
 
@@ -595,6 +639,12 @@ class Appdata {
       if (settings[13].isEmpty) {
         settings[13] = "0";
       }
+
+      // 内置漫画源强制禁用并持久化, 确保旧版本读取同一设置文件时也是禁用状态
+      if (settings[82] != "000000") {
+        settings[82] = "000000";
+        await updateSettings(false);
+      }
     } catch (e) {
       LogManager.addLog(LogLevel.error, "Appdata.readSettings",
           "Critical error in readSettings: $e");
@@ -897,7 +947,8 @@ class _Settings {
     if (index == -1) {
       throw "Not Found";
     }
-    return appdata.settings[82][index] == '1';
+    // Built-in sources remain disabled regardless of saved settings.
+    return false;
   }
 
   void setComicSourceEnabled(String key, bool enabled) {
@@ -905,8 +956,8 @@ class _Settings {
     if (index == -1) {
       throw "Not Found";
     }
-    appdata.settings[82] =
-        appdata.settings[82].setValueAt(enabled ? '1' : '0', index);
+    appdata.settings[82] = '000000';
+    appdata.updateSettings(false);
   }
 
   List<String> get jmApiDomains => appdata.settings[85].split(',');

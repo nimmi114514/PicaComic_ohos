@@ -20,64 +20,102 @@ class _CookieManagementViewState extends State<CookieManagementView> {
     return ExpansionTile(
       title: const Text("cookies"),
       shape: const RoundedRectangleBorder(),
-      children: [
-        ListTile(
-          title: const Text("ipb_member_id"),
-          subtitle: Text(EhNetwork().id),
-          onTap: () => setClipboard(EhNetwork().id),
-        ),
-        ListTile(
-          title: const Text("ipb_pass_hash"),
-          subtitle: Text(EhNetwork().hash),
-          onTap: () => setClipboard(EhNetwork().hash),
-        ),
-        ListTile(
-          title: const Text("igneous"),
-          subtitle: Text(EhNetwork().igneous),
-          onTap: () => setClipboard(EhNetwork().igneous),
-          trailing: IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  String text = EhNetwork().igneous;
-                  return ContentDialog(
-                    title: "igneous",
-                    content: TextField(
-                      controller: TextEditingController(text: text),
-                      onChanged: (s) => text = s,
-                    ).paddingHorizontal(16),
-                    actions: [
-                      Button.filled(
-                        onPressed: () {
-                          EhNetwork().igneous = text;
-                          EhNetwork().cookieJar.saveFromResponse(
-                            Uri.parse("https://exhentai.org"),
-                            [Cookie("igneous", text)],
-                          );
-                          EhNetwork().cookieJar.saveFromResponse(
-                            Uri.parse("https://e-hentai.org"),
-                            [Cookie("igneous", text)],
-                          );
-                          context.pop();
-                          setState(() {});
-                        },
-                        child: Text("确定".tl),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
+      children: _cookieTiles(context, () => setState(() {})),
     );
   }
+}
 
-  void setClipboard(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    showToast(message: "已复制".tl, icon: const Icon(Icons.check));
+/// A standalone page version of [CookieManagementView], opened from the
+/// account page of the ehentai JS source via the "ehentai_cookie_management"
+/// info item action.
+class CookieManagementPage extends StatefulWidget {
+  const CookieManagementPage({super.key});
+
+  @override
+  State<CookieManagementPage> createState() => _CookieManagementPageState();
+}
+
+class _CookieManagementPageState extends State<CookieManagementPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh in-memory cookie values from the shared cookie jar, so the
+    // page shows current values even before any network request.
+    EhNetwork().getCookies(true).then((_) {
+      if (mounted) setState(() {});
+    });
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("cookies"),
+      ),
+      body: ListView(
+        children: _cookieTiles(context, () => setState(() {})),
+      ),
+    );
+  }
+}
+
+List<Widget> _cookieTiles(BuildContext context, VoidCallback refresh) => [
+      ListTile(
+        title: const Text("ipb_member_id"),
+        subtitle: Text(EhNetwork().id),
+        onTap: () => _setClipboard(EhNetwork().id),
+      ),
+      ListTile(
+        title: const Text("ipb_pass_hash"),
+        subtitle: Text(EhNetwork().hash),
+        onTap: () => _setClipboard(EhNetwork().hash),
+      ),
+      ListTile(
+        title: const Text("igneous"),
+        subtitle: Text(EhNetwork().igneous),
+        onTap: () => _setClipboard(EhNetwork().igneous),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: () => _showIgnEditDialog(context, refresh),
+        ),
+      ),
+    ];
+
+void _showIgnEditDialog(BuildContext context, VoidCallback refresh) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      String text = EhNetwork().igneous;
+      return ContentDialog(
+        title: "igneous",
+        content: TextField(
+          controller: TextEditingController(text: text),
+          onChanged: (s) => text = s,
+        ).paddingHorizontal(16),
+        actions: [
+          Button.filled(
+            onPressed: () {
+              EhNetwork().igneous = text;
+              EhNetwork().cookieJar.saveFromResponse(
+                Uri.parse("https://exhentai.org"),
+                [Cookie("igneous", text)],
+              );
+              EhNetwork().cookieJar.saveFromResponse(
+                Uri.parse("https://e-hentai.org"),
+                [Cookie("igneous", text)],
+              );
+              context.pop();
+              refresh();
+            },
+            child: Text("确定".tl),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+void _setClipboard(String text) {
+  Clipboard.setData(ClipboardData(text: text));
+  showToast(message: "已复制".tl, icon: const Icon(Icons.check));
 }

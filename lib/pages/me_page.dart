@@ -79,10 +79,10 @@ class MePage extends StatelessWidget {
           buildHistory(context),
           buildFollowUpdates(context),
           buildAccount(1000), // width not critical for Fluent layout here
+          buildComicSource(context, 1000),
           buildDownload(context, 1000),
           buildLocalAddComic(context, 1000),
           buildImageFavorite(context, 1000),
-          buildComicSource(context, 1000),
           buildTools(context, 1000),
           buildSyncData(context, 1000),
           const SizedBox(height: 24),
@@ -113,9 +113,9 @@ class MePage extends StatelessWidget {
                         child: Column(
                           children: [
                             buildAccount(width),
+                            buildComicSource(context, width),
                             buildDownload(context, width),
                             buildLocalAddComic(context, width),
-                            buildComicSource(context, width),
                           ],
                         ),
                       ),
@@ -165,8 +165,30 @@ class MePage extends StatelessWidget {
                 children: [
                   fluent.ListTile(
                     leading: const Icon(fluent.FluentIcons.history),
-                    title: Text("${"历史记录".tl}(${HistoryManager().count()})"),
-                    trailing: const Icon(fluent.FluentIcons.chevron_right),
+                    title: Text("历史记录".tl),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: fluent.FluentTheme.of(context)
+                                .resources
+                                .cardBackgroundFillColorSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            HistoryManager().count().toString(),
+                            style: ts.s12,
+                          ),
+                        ),
+                        const Icon(fluent.FluentIcons.chevron_right),
+                      ],
+                    ),
                     onPressed: () => context.to(() => const HistoryPage()),
                   ),
                   const SizedBox(height: 8),
@@ -490,6 +512,7 @@ class MePage extends StatelessWidget {
     );
   }
 
+
   Widget buildDownload(BuildContext context, double width) {
     return StateBuilder<SimpleController>(
       tag: "me_page_downloads",
@@ -515,6 +538,8 @@ class MePage extends StatelessWidget {
     );
   }
 
+
+
   Widget buildImageFavorite(BuildContext context, double width) {
     return StateBuilder<SimpleController>(
       tag: "me_page",
@@ -523,8 +548,7 @@ class MePage extends StatelessWidget {
         return _MePageCard(
           icon: const Icon(Icons.image),
           title: "图片收藏".tl,
-          description: "@a 条图片收藏"
-              .tlParams({"a": ImageFavoriteManager.length.toString()}),
+          badge: ImageFavoriteManager.length.toString(),
           onTap: () => context.to(() => const ImageFavoritesPage()),
         );
       },
@@ -535,6 +559,25 @@ class MePage extends StatelessWidget {
     return StateBuilder<SimpleController>(
       tag: "me_page_sources",
       init: SimpleController(),
+      initState: (controller) {
+        () async {
+          var last = await appdata.readLastComicSourceCheck();
+          if (last != null &&
+              DateTime.now()
+                      .difference(DateTime.fromMillisecondsSinceEpoch(last)) <
+                  const Duration(hours: 12)) {
+            return;
+          }
+          try {
+            var count = await checkComicSourceUpdate();
+            if (count >= 0) {
+              appdata.writeLastComicSourceCheck(
+                  DateTime.now().millisecondsSinceEpoch);
+            }
+          } catch (_) {}
+          controller.update();
+        }();
+      },
       builder: (controller) {
         var comicSources = ComicSource.sources;
         Widget buildItem(String name) {
@@ -568,6 +611,13 @@ class MePage extends StatelessWidget {
           );
         }
 
+        var updateCount = comicSources
+            .where((e) =>
+                !e.isBuiltIn &&
+                ComicSource.updates[e.key] != null &&
+                ComicSource.updates[e.key] != e.version)
+            .length;
+
         return _MePageCard(
           icon: const Icon(Icons.dashboard_customize),
           title: "漫画源".tl,
@@ -575,11 +625,25 @@ class MePage extends StatelessWidget {
               "共 @a 个漫画源".tlParams({"a": comicSources.length.toString()}),
           onTap: () => App.mainNavigatorKey?.currentContext
               ?.to(() => const ComicSourceSettings()),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: comicSources.map((e) => buildItem(e.name.tl)).toList(),
-          ).paddingHorizontal(12).paddingBottom(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (updateCount > 0)
+                Text(
+                  "有@a个可更新".tlParams({"a": updateCount.toString()}),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.green),
+                ).paddingHorizontal(12).paddingBottom(8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    comicSources.map((e) => buildItem(e.name.tl)).toList(),
+              ).paddingHorizontal(12).paddingBottom(12),
+            ],
+          ),
         );
       },
     );
@@ -722,19 +786,39 @@ class _MePageCard extends StatelessWidget {
   const _MePageCard({
     required this.icon,
     required this.title,
-    required this.description,
+    this.description,
     required this.onTap,
     this.child,
+    this.badge,
   });
 
   final Widget icon;
   final String title;
-  final String description;
+  final String? description;
   final VoidCallback onTap;
   final Widget? child;
+  final String? badge;
+
+  Widget? buildBadge(BuildContext context) {
+    if (badge == null) return null;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: App.isFluent
+            ? fluent.FluentTheme.of(context)
+                .resources
+                .cardBackgroundFillColorSecondary
+            : Theme.of(context).colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(badge!, style: ts.s12),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final badgeWidget = buildBadge(context);
     if (App.isFluent) {
       return fluent.Card(
         margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -742,15 +826,24 @@ class _MePageCard extends StatelessWidget {
         child: fluent.ListTile(
           onPressed: onTap,
           title: Text(title),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          subtitle: (description == null && child == null)
+              ? null
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (description != null)
+                      Text(description!).paddingVertical(4),
+                    if (child != null) child!,
+                  ],
+                ),
+          leading: icon,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(description).paddingVertical(4),
-              if (child != null) child!,
+              if (badgeWidget != null) badgeWidget,
+              const Icon(fluent.FluentIcons.chevron_right),
             ],
           ),
-          leading: icon,
-          trailing: const Icon(fluent.FluentIcons.chevron_right),
         ),
       );
     }
@@ -779,15 +872,17 @@ class _MePageCard extends StatelessWidget {
                   Center(
                     child: Text(title, style: ts.s18),
                   ),
+                  if (badgeWidget != null) badgeWidget,
                   const Spacer(),
                   const Icon(Icons.arrow_right).paddingRight(16),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 16),
-              child: Text(description, style: ts.s14),
-            ),
+            if (description != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 16, bottom: 16),
+                child: Text(description!, style: ts.s14),
+              ),
             if (child != null) child!
           ],
         ),

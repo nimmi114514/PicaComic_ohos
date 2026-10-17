@@ -135,7 +135,9 @@ class CommentTile extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          )
+                          ),
+                        if(tailing != null)
+                          tailing!,
                       ],
                     )
                   ],

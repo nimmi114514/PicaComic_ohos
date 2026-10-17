@@ -490,176 +490,183 @@ class _ComicDescription extends StatelessWidget {
           height: 4,
         ),
         if (categories != null && categories!.isNotEmpty)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Card(
-                    margin: EdgeInsets.zero,
-                    color: colors["分类".tl.hashCode.abs() % colors.length]
-                        .shade100
-                        .withOpacity(0.6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
-                      child: Text(
-                        "分类".tl,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => Padding(
+                padding: EdgeInsets.only(bottom: constraints.maxHeight % 23),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      margin: EdgeInsets.zero,
+                      color: colors["分类".tl.hashCode.abs() % colors.length]
+                          .shade100
+                          .withOpacity(0.6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
+                        child: Text(
+                          "分类".tl,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    child: SizedBox(
-                      height: 23,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => Wrap(
-                          runAlignment: WrapAlignment.start,
-                          clipBehavior: Clip.antiAlias,
-                          crossAxisAlignment: WrapCrossAlignment.end,
-                          children: [
-                            for (var s in categories!)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(0, 0, 4, 3),
-                                child: Container(
-                                  padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primaryContainer,
-                                    borderRadius:
-                                    const BorderRadius.all(Radius.circular(8)),
-                                  ),
-                                  child: Text(
-                                        (){
-                                      // Check if translation should be enabled for JS plugins
-                                      //print("DEBUG: _ComicDescription processing tag '$s', sourceKey: $sourceKey");
-                                      if (sourceKey != null) {
-                                        var source = ComicSource.find(sourceKey!);
-                                        //print("DEBUG: Found source: ${source?.name}, isBuiltIn: ${source?.isBuiltIn}, enableTagsTranslate: ${source?.enableTagsTranslate}");
-                                        if (source != null && !source.isBuiltIn && source.enableTagsTranslate && App.locale.languageCode == "zh") {
-                                          // Parse namespace:tag format for translation
-                                          if (s.contains(':')) {
-                                            var parts = s.split(':');
-                                            var namespace = parts[0];
-                                            var tagText = parts.sublist(1).join(':');
-                                            var translated = TagsTranslation.translationTagWithNamespace(tagText, namespace);
-                                            // print("DEBUG: ComicTile translating tag '$s' -> '$translated'");
-                                            return translated;
-                                          } else {
-                                            // For tags without namespace, try direct translation
-                                            var translated = TagsTranslation.translationTagWithNamespace(s, "tag");
-                                            // print("DEBUG: ComicTile translating tag without namespace '$s' -> '$translated'");
-                                            return translated;
-                                          }
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: Wrap(
+                        runAlignment: WrapAlignment.start,
+                        clipBehavior: Clip.antiAlias,
+                        crossAxisAlignment: WrapCrossAlignment.end,
+                        children: [
+                          for (var s in categories!)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 0, 4, 3),
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer,
+                                  borderRadius:
+                                      const BorderRadius.all(Radius.circular(8)),
+                                ),
+                                child: Text(
+                                  (){
+                                    // Check if translation should be enabled for JS plugins
+                                    //print("DEBUG: _ComicDescription processing tag '$s', sourceKey: $sourceKey");
+                                    if (sourceKey != null) {
+                                      var source = ComicSource.find(sourceKey!);
+                                      //print("DEBUG: Found source: ${source?.name}, isBuiltIn: ${source?.isBuiltIn}, enableTagsTranslate: ${source?.enableTagsTranslate}");
+                                      if (source != null && !source.isBuiltIn && source.enableTagsTranslate && App.locale.languageCode == "zh") {
+                                        // Parse namespace:tag format for translation
+                                        if (s.contains(':')) {
+                                          var parts = s.split(':');
+                                          var namespace = parts[0];
+                                          var tagText = parts.sublist(1).join(':');
+                                          var translated = TagsTranslation.translationTagWithNamespace(tagText, namespace);
+                                          // print("DEBUG: ComicTile translating tag '$s' -> '$translated'");
+                                          return translated;
+                                        } else {
+                                          // For tags without namespace, try direct translation
+                                          var translated = TagsTranslation.translationTagWithNamespace(s, "tag");
+                                          // print("DEBUG: ComicTile translating tag without namespace '$s' -> '$translated'");
+                                          return translated;
                                         }
                                       }
-                                      return s;
-                                    }(),
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
+                                    }
+                                    return s;
+                                  }(),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
-                              )
-                          ],
-                        ),
+                              ),
+                            )
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         if (tags != null && tags!.isNotEmpty)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Card(
-                    margin: EdgeInsets.zero,
-                    color: colors["标签".tl.hashCode.abs() % colors.length]
-                        .shade100
-                        .withOpacity(0.6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
-                      child: Text(
-                        "标签".tl,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => Padding(
+                padding: EdgeInsets.only(bottom: constraints.maxHeight % 23),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      margin: EdgeInsets.zero,
+                      color: colors["标签".tl.hashCode.abs() % colors.length]
+                          .shade100
+                          .withOpacity(0.6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
+                        child: Text(
+                          "标签".tl,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    child: SizedBox(
-                      height: 23,
+                    const SizedBox(width: 2),
+                    Expanded(
                       child: LayoutBuilder(
-                        builder: (context, constraints) => Wrap(
-                          runAlignment: WrapAlignment.start,
-                          clipBehavior: Clip.antiAlias,
-                          crossAxisAlignment: WrapCrossAlignment.end,
-                          children: [
-                            for (var s in tags!)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(0, 0, 4, 3),
-                                child: Container(
-                                  padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
-                                  decoration: BoxDecoration(
-                                    color: s == "Unavailable"
-                                        ? Theme.of(context).colorScheme.errorContainer
-                                        : Theme.of(context)
-                                        .colorScheme
-                                        .secondaryContainer,
-                                    borderRadius:
-                                    const BorderRadius.all(Radius.circular(8)),
-                                  ),
-                                  child: Text(
-                                        (){
-                                      // Check if translation should be enabled for JS plugins
-                                      //print("DEBUG: _ComicDescription processing TAG '$s', sourceKey: $sourceKey");
-                                      if (sourceKey != null) {
-                                        var source = ComicSource.find(sourceKey!);
-                                        // print("DEBUG: Found source: ${source?.name}, isBuiltIn: ${source?.isBuiltIn}, enableTagsTranslate: ${source?.enableTagsTranslate}");
-                                        if (source != null && !source.isBuiltIn && source.enableTagsTranslate && App.locale.languageCode == "zh") {
-                                          // Parse namespace:tag format for translation
-                                          if (s.contains(':')) {
-                                            var parts = s.split(':');
-                                            var namespace = parts[0];
-                                            var tagText = parts.sublist(1).join(':');
-                                            var translated = TagsTranslation.translationTagWithNamespace(tagText, namespace);
-                                            //print("DEBUG: ComicTile translating TAG '$s' -> '$translated'");
-                                            return translated;
-                                          } else {
-                                            // For tags without namespace, try direct translation
-                                            var translated = TagsTranslation.translationTagWithNamespace(s, "tag");
-                                            // print("DEBUG: ComicTile translating TAG without namespace '$s' -> '$translated'");
-                                            return translated;
+                        builder: (context, wrapConstraints) {
+                          var maxTagWidth = wrapConstraints.maxWidth * 0.45;
+                          if (maxTagWidth > 110) maxTagWidth = 110;
+                          return Wrap(
+                            runAlignment: WrapAlignment.start,
+                            clipBehavior: Clip.antiAlias,
+                            crossAxisAlignment: WrapCrossAlignment.end,
+                            children: [
+                              for (var s in tags!)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(0, 0, 4, 3),
+                                  child: Container(
+                                    padding: const EdgeInsets.fromLTRB(3, 1, 3, 3),
+                                    constraints: BoxConstraints(
+                                      maxWidth: maxTagWidth,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: s == "Unavailable"
+                                          ? Theme.of(context).colorScheme.errorContainer
+                                          : Theme.of(context)
+                                          .colorScheme
+                                          .secondaryContainer,
+                                      borderRadius:
+                                          const BorderRadius.all(Radius.circular(8)),
+                                    ),
+                                    child: Text(
+                                      (){
+                                        // Check if translation should be enabled for JS plugins
+                                        //print("DEBUG: _ComicDescription processing TAG '$s', sourceKey: $sourceKey");
+                                        if (sourceKey != null) {
+                                          var source = ComicSource.find(sourceKey!);
+                                          // print("DEBUG: Found source: ${source?.name}, isBuiltIn: ${source?.isBuiltIn}, enableTagsTranslate: ${source?.enableTagsTranslate}");
+                                          if (source != null && !source.isBuiltIn && source.enableTagsTranslate && App.locale.languageCode == "zh") {
+                                            // Parse namespace:tag format for translation
+                                            if (s.contains(':')) {
+                                              var parts = s.split(':');
+                                              var namespace = parts[0];
+                                              var tagText = parts.sublist(1).join(':');
+                                              var translated = TagsTranslation.translationTagWithNamespace(tagText, namespace);
+                                              //print("DEBUG: ComicTile translating TAG '$s' -> '$translated'");
+                                              return translated;
+                                            } else {
+                                              // For tags without namespace, try direct translation
+                                              var translated = TagsTranslation.translationTagWithNamespace(s, "tag");
+                                              // print("DEBUG: ComicTile translating TAG without namespace '$s' -> '$translated'");
+                                              return translated;
+                                            }
                                           }
                                         }
-                                      }
-                                      return s;
-                                    }(),
-                                    style: const TextStyle(fontSize: 12),
+                                        return s;
+                                      }(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
                                   ),
-                                ),
-                              )
-                          ],
-                        ),
+                                )
+                            ],
+                          );
+                        },
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         if (pages != null)
           Padding(
@@ -950,6 +957,9 @@ class CustomComicTile extends ComicTile {
   String get description => comic.description;
 
   @override
+  int? get pages => comic.pages;
+
+  @override
   Widget get image => AnimatedImage(
     image: StreamImageProvider(
             () =>
@@ -962,6 +972,18 @@ class CustomComicTile extends ComicTile {
 
   @override
   void onTap_() {
+    if (comic.id.startsWith("creator:")) {
+      final creatorId = comic.id.substring("creator:".length);
+      App.mainNavigatorKey!.currentContext!.to(
+        () => CategoryComicsPage(
+          category: creatorId,
+          param: "ca",
+          categoryKey: comic.sourceKey,
+          displayTitle: comic.title,
+        ),
+      );
+      return;
+    }
     App.mainNavigatorKey!.currentContext!.to(() => ComicPage(
       sourceKey: comic.sourceKey,
       id: comic.id,
@@ -979,7 +1001,41 @@ class CustomComicTile extends ComicTile {
   FavoriteItem? get favoriteItem => FavoriteItem.custom(comic);
 
   @override
-  List<String>? get tags => comic.tags;
+  List<String>? get tags {
+    if (comic.sourceKey != 'ehentai') {
+      return comic.tags;
+    }
+    // 与内置源 _EhGalleryTile._generateTags 
+    // 过滤 language 
+    // 标签(character/artist/cosplayer/group)置后, 标签数量
+    var res = <String>[];
+    var res2 = <String>[];
+    for (var tag in comic.tags ?? const <String>[]) {
+      if (tag.contains(":")) {
+        var splits = tag.split(":");
+        if (splits[0] == "language") {
+          continue;
+        }
+        if (App.locale.languageCode != "zh") {
+          res.add(splits[1].length > 32
+              ? "${splits[1].substring(0, 20)}..."
+              : splits[1]);
+          continue;
+        }
+        const lowLevelKey = ["character", "artist", "cosplayer", "group"];
+        if (lowLevelKey.contains(splits[0])) {
+          res2.add(TagsTranslation.translationTagWithNamespace(
+              splits[1], splits[0]));
+        } else {
+          res.add(TagsTranslation.translationTagWithNamespace(
+              splits[1], splits[0]));
+        }
+      } else {
+        res.add(tag.translateTagsToCN);
+      }
+    }
+    return res + res2;
+  }
 
   @override
   final List<ComicTileMenuOption>? addonMenuOptions;
@@ -988,12 +1044,53 @@ class CustomComicTile extends ComicTile {
   String? get comicID => comic.id;
 
   @override
-  String? get badge => badge_;
+  Widget? buildSubDescription(BuildContext context) {
+    final stars = comic.stars;
+    if (stars == null) return null;
+    final s = (stars / 0.5).round();
+    return SizedBox(
+      height: 20,
+      child: Row(
+        children: [
+          for (int i = 0; i < s ~/ 2; i++)
+            Icon(
+              Icons.star,
+              size: 20,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+          if (s % 2 == 1)
+            Icon(
+              Icons.star_half,
+              size: 20,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+          for (int i = 0; i < (5 - s ~/ 2 - s % 2); i++)
+            const Icon(
+              Icons.star_border,
+              size: 20,
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  String? get badge {
+    if (badge_ != null) return badge_;
+    if (comic.sourceKey != 'ehentai') return null;
+    final language = comic.language;
+    if (language == null || language.isEmpty) return null;
+    return App.locale.languageCode == 'zh'
+        ? TagsTranslation.translationTagWithNamespace(language, 'language')
+        : language;
+  }
 
   final String? badge_;
 
   @override
-  get read => () async {
+  get read => comic.id.startsWith("creator:")
+      ? null
+      : () async {
     bool cancel = false;
     var dialog = showLoadingDialog(
       App.globalContext!,
@@ -1028,6 +1125,20 @@ Widget buildComicTile(BuildContext context, BaseComic item, String sourceKey,
   var source = ComicSource.find(sourceKey);
   if (source == null) {
     throw "Comic Source $sourceKey Not Found";
+  }
+  if (item is! CustomComic && source.comicTileBuilderOverride == null) {
+    // JS 源覆盖内置源时, 原生漫画模型 (如哔咔推荐页的 ComicItemBrief)
+    // 回退到同 key 内置源的 tile 构建器
+    ComicSource? fallback;
+    for (var e in ComicSource.builtIn) {
+      if (e.key == sourceKey && e.comicTileBuilderOverride != null) {
+        fallback = e;
+        break;
+      }
+    }
+    if (fallback != null) {
+      source = fallback;
+    }
   }
   if (!appdata.appSettings.fullyHideBlockedWorks) {
     var blockWord = isBlocked(item);

@@ -109,11 +109,16 @@ class CategoryData {
 class CategoryButtonData {
   final String label;
 
-  final void Function() onTap;
+  final void Function()? onTap;
+
+  /// Data-driven action for JS comic sources, e.g.
+  /// {"page": "comic", "id": ""}
+  final Map<String, dynamic>? action;
 
   const CategoryButtonData({
     required this.label,
-    required this.onTap,
+    this.onTap,
+    this.action,
   });
 }
 

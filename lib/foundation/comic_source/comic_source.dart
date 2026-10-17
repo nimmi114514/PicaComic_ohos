@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
+import 'package:html/parser.dart' as html;
 import 'package:pica_comic/components/components.dart';
 import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/history.dart';
@@ -16,7 +17,15 @@ import 'package:pica_comic/utils/extensions.dart';
 import '../../base.dart';
 import '../../foundation/js_engine.dart';
 import '../../network/base_comic.dart';
+import '../../network/nhentai_network/nhentai_main_network.dart';
 import '../../network/res.dart';
+import '../../pages/hitomi/hitomi_home_page.dart';
+import '../../pages/ehentai/accounts.dart';
+import '../../pages/ehentai/eh_script_login_page.dart';
+import '../../pages/script_login_page.dart';
+import '../../pages/settings/pikacg_leavemsg_page.dart';
+import '../../pages/settings/user_comments_page.dart';
+import 'app_build_in_category.dart' show ehCategory;
 import 'built_in/ehentai.dart';
 import 'built_in/hitomi.dart';
 import 'built_in/ht_manga.dart';
@@ -57,6 +66,10 @@ typedef SendChapterCommentFunc = Future<Res<bool>> Function(
 typedef LikeCommentFunc = Future<Res<int?>> Function(
     String comicId, String? subId, String commentId, bool isLiking);
 
+/// [isLiking] is true if the user is liking the comic, false if unliking.
+typedef LikeComicFunc = Future<Res<void>> Function(
+    String comicId, bool isLiking);
+
 /// [isUp] is true if the user is upvoting the comment, false if downvoting.
 /// return the new vote count or null.
 typedef VoteCommentFunc = Future<Res<int?>> Function(
@@ -66,6 +79,24 @@ typedef GetImageLoadingConfigFunc = Future<Map<String, dynamic>> Function(
     String imageKey, String comicId, String epId)?;
 typedef GetThumbnailLoadingConfigFunc = Future<Map<String, dynamic>> Function(
     String imageKey)?;
+
+class ArchiveInfo {
+  final String id;
+  final String title;
+  final String description;
+
+  ArchiveInfo.fromJson(Map<String, dynamic> json)
+      : id = json['id'] as String,
+        title = json['title'] as String,
+        description = json['description'] as String? ?? '';
+}
+
+class ArchiveDownloader {
+  final Future<Res<List<ArchiveInfo>>> Function(String cid) getArchives;
+  final Future<Res<String>> Function(String cid, String aid) getDownloadUrl;
+
+  const ArchiveDownloader(this.getArchives, this.getDownloadUrl);
+}
 
 class ComicSource {
   static final builtIn = [picacg, ehentai, jm, hitomi, htManga, nhentai];
@@ -84,10 +115,15 @@ class ComicSource {
   static Future<void> init() async {
     for (var source in builtInSources) {
       if (appdata.appSettings.isComicSourceEnabled(source)) {
-        var s = builtIn.firstWhere((e) => e.key == source);
-        sources.add(s);
-        await s.loadData();
-        s.initData?.call(s);
+        try {
+          var s = builtIn.firstWhere((e) => e.key == source);
+          sources.add(s);
+          await s.loadData();
+          s.initData?.call(s);
+        } catch (e, s) {
+          log("Failed to init accounts data $source: $e\n$s", "ComicSource",
+              LogLevel.error);
+        }
       }
     }
     final path = "${App.dataPath}/comic_source";
@@ -155,6 +191,8 @@ class ComicSource {
   /// Load comic pages.
   final LoadComicPagesFunc? loadComicPages;
 
+  final ArchiveDownloader? archiveDownloader;
+
   final Future<Map<String, dynamic>> Function(
       String imageKey, String comicId, String epId)? getImageLoadingConfig;
 
@@ -183,6 +221,8 @@ class ComicSource {
 
   final LikeCommentFunc? likeCommentFunc;
 
+  final LikeComicFunc? likeComicFunc;
+
   final VoteCommentFunc? voteCommentFunc;
 
   final RegExp? idMatcher;
@@ -192,7 +232,13 @@ class ComicSource {
   Future<void> loadData() async {
     var file = File("${App.dataPath}/comic_source/$key.data");
     if (await file.exists()) {
-      data = Map.from(jsonDecode(await file.readAsString()));
+      try {
+        data = Map.from(jsonDecode(await file.readAsString()));
+      } catch (e, s) {
+        // 数据文件为空或损坏时，回退到空数据
+        log("Failed to load data of $key: $e\n$s", "ComicSource", LogLevel.error);
+        data = <String, dynamic>{};
+      }
     }
   }
 
@@ -258,7 +304,7 @@ class ComicSource {
       this.commentsLoader,
       this.sendCommentFunc,
       this.enableTagsTranslate,
-      {this.veneraSettings = const {}})
+      {this.veneraSettings = const {}, this.archiveDownloader})
       : initData = null,
         comicTileBuilderOverride = null,
         idMatcher = null,
@@ -266,6 +312,7 @@ class ComicSource {
         chapterCommentsLoader = null,
         sendChapterCommentFunc = null,
         likeCommentFunc = null,
+        likeComicFunc = null,
         voteCommentFunc = null;
 
   ComicSource.named({
@@ -280,6 +327,7 @@ class ComicSource {
     this.settings = const [],
     this.loadComicInfo,
     this.loadComicPages,
+    this.archiveDownloader,
     this.getImageLoadingConfig,
     this.getThumbnailLoadingConfig,
     this.matchBriefIdReg,
@@ -291,6 +339,7 @@ class ComicSource {
     this.chapterCommentsLoader,
     this.sendChapterCommentFunc,
     this.likeCommentFunc,
+    this.likeComicFunc,
     this.voteCommentFunc,
     this.initData,
     this.comicTileBuilderOverride,
@@ -312,6 +361,7 @@ class ComicSource {
         veneraSettings = const {},
         loadComicInfo = null,
         loadComicPages = null,
+        archiveDownloader = null,
         getImageLoadingConfig = null,
         getThumbnailLoadingConfig = null,
         matchBriefIdReg = null,
@@ -323,6 +373,7 @@ class ComicSource {
         chapterCommentsLoader = null,
         sendChapterCommentFunc = null,
         likeCommentFunc = null,
+        likeComicFunc = null,
         voteCommentFunc = null,
         initData = null,
         comicTileBuilderOverride = null,
@@ -471,12 +522,21 @@ class SearchOptions {
   final LinkedHashMap<String, String> options;
 
   final String label;
+  final String type;
+  final String? _defaultValue;
 
-  const SearchOptions(this.options, this.label);
+  const SearchOptions(this.options, this.label,
+      {this.type = 'select', String? defaultValue})
+      : _defaultValue = defaultValue;
 
-  String get defaultValue => options.keys.first;
+  String get defaultValue => _defaultValue ?? options.keys.first;
 
-  const SearchOptions.named({required this.options, required this.label});
+  const SearchOptions.named({
+    required this.options,
+    required this.label,
+    this.type = 'select',
+    String? defaultValue,
+  }) : _defaultValue = defaultValue;
 }
 
 class SettingItem {
@@ -612,6 +672,41 @@ class ComicChapters {
   }
 }
 
+/// JS 源返回的上传者信息, 用于渲染漫画详情页的上传者卡片
+class UploaderInfo {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+  final String? frameUrl;
+  final String? slogan;
+  final int level;
+  final String? updateTime;
+
+  const UploaderInfo(this.id, this.name,
+      {this.avatarUrl, this.frameUrl, this.slogan, this.level = 0, this.updateTime});
+
+  UploaderInfo.fromJson(Map<String, dynamic> json)
+      : id = json["id"]?.toString() ?? "",
+        name = json["name"]?.toString() ?? "",
+        avatarUrl = json["avatarUrl"]?.toString(),
+        frameUrl = json["frameUrl"]?.toString(),
+        slogan = json["slogan"]?.toString(),
+        level = json["level"] is num
+            ? (json["level"] as num).toInt()
+            : int.tryParse(json["level"]?.toString() ?? "") ?? 0,
+        updateTime = json["updateTime"]?.toString();
+
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "name": name,
+        "avatarUrl": avatarUrl,
+        "frameUrl": frameUrl,
+        "slogan": slogan,
+        "level": level,
+        "updateTime": updateTime,
+      };
+}
+
 class ComicInfoData with HistoryMixin {
   @override
   final String title;
@@ -648,22 +743,45 @@ class ComicInfoData with HistoryMixin {
 
   final double? stars;
 
-  const ComicInfoData(
-      this.title,
-      this.subTitle,
-      this.cover,
-      this.description,
-      this.tags,
-      this.chapters,
-      this.thumbnails,
-      this.thumbnailLoader,
-      this.thumbnailMaxPage,
-      this.suggestions,
-      this.sourceKey,
-      this.comicId,
-      {this.isFavorite,
-      this.subId,
-      this.stars});
+  /// uploader info card data (JS sources)
+  final UploaderInfo? uploader;
+
+  final int? pages;
+
+  /// likes count of the comic (JS sources)
+  int? likesCount;
+
+  /// whether current user liked the comic (JS sources)
+  bool? isLiked;
+
+  /// comments count of the comic (JS sources)
+  int? commentsCount;
+
+  /// url of the comic page on the source website (JS sources)
+  final String? url;
+
+  ComicInfoData(
+    this.title,
+    this.subTitle,
+    this.cover,
+    this.description,
+    this.tags,
+    this.chapters,
+    this.thumbnails,
+    this.thumbnailLoader,
+    this.thumbnailMaxPage,
+    this.suggestions,
+    this.sourceKey,
+    this.comicId, {
+    this.isFavorite,
+    this.subId,
+    this.stars,
+    this.uploader,
+    this.pages,
+    this.likesCount,
+    this.isLiked,
+    this.commentsCount,
+    this.url});
 
   Map<String, dynamic> toJson() {
     return {
@@ -678,6 +796,12 @@ class ComicInfoData with HistoryMixin {
       "isFavorite": isFavorite,
       "subId": subId,
       "stars": stars,
+      "uploader": uploader?.toJson(),
+      "pages": pages,
+      "likesCount": likesCount,
+      "isLiked": isLiked,
+      "commentsCount": commentsCount,
+      "url": url,
     };
   }
 
@@ -704,7 +828,27 @@ class ComicInfoData with HistoryMixin {
         suggestions = null,
         isFavorite = json["isFavorite"],
         subId = json["subId"],
-        stars = json["stars"] != null ? (json["stars"] as num).toDouble() : null;
+        stars = json["stars"] != null ? (json["stars"] as num).toDouble() : null,
+        pages = switch (json["pages"] ?? json["maxPage"]) {
+          num value when value.isFinite => value.toInt(),
+          String value => int.tryParse(value),
+          _ => null,
+        },
+        uploader = json["uploader"] is Map
+            ? UploaderInfo.fromJson(Map<String, dynamic>.from(json["uploader"]))
+            : null,
+        likesCount = switch (json["likesCount"]) {
+          num value when value.isFinite => value.toInt(),
+          String value => int.tryParse(value),
+          _ => null,
+        },
+        isLiked = json["isLiked"] is bool ? json["isLiked"] : null,
+        commentsCount = switch (json["commentsCount"]) {
+          num value when value.isFinite => value.toInt(),
+          String value => int.tryParse(value),
+          _ => null,
+        },
+        url = json["url"] is String ? json["url"] : null;
 
   @override
   HistoryType get historyType => HistoryType(sourceKey.hashCode);
@@ -747,6 +891,9 @@ class ComicInfoData with HistoryMixin {
 typedef CategoryComicsLoader = Future<Res<List<BaseComic>>> Function(
     String category, String? param, List<String> options, int page);
 
+typedef CategoryOptionsLoader = Future<Res<List<CategoryComicsOptions>>> Function(
+    String category, String? param);
+
 class CategoryComicsData {
   /// options
   final List<CategoryComicsOptions> options;
@@ -760,12 +907,16 @@ class CategoryComicsData {
 
   final RankingData? rankingData;
 
-  const CategoryComicsData(this.options, this.load, {this.rankingData});
+  final CategoryOptionsLoader? optionsLoader;
+
+  const CategoryComicsData(this.options, this.load,
+      {this.rankingData, this.optionsLoader});
 
   const CategoryComicsData.named({
     this.options = const [],
     required this.load,
     this.rankingData,
+    this.optionsLoader,
   });
 }
 
@@ -783,6 +934,8 @@ class RankingData {
 }
 
 class CategoryComicsOptions {
+  final String label;
+
   /// Use a [LinkedHashMap] to describe an option list.
   /// key is for loading comics, value is the name displayed on screen.
   /// Default value will be the first of the Map.
@@ -793,12 +946,14 @@ class CategoryComicsOptions {
 
   final List<String>? showWhen;
 
-  const CategoryComicsOptions(this.options, this.notShowWhen, this.showWhen);
+  const CategoryComicsOptions(this.options, this.notShowWhen, this.showWhen,
+      {this.label = ""});
 
   const CategoryComicsOptions.named({
     required this.options,
     this.notShowWhen = const [],
     this.showWhen,
+    this.label = "",
   });
 }
 

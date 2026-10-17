@@ -37,6 +37,10 @@ class CustomComic extends BaseComic {
 
   final String sourceKey;
 
+  final int? pages;
+  final String? language;
+  final double? stars;
+
   const CustomComic(
     this.title,
     this.subTitle,
@@ -44,8 +48,11 @@ class CustomComic extends BaseComic {
     this.id,
     this.tags,
     this.description,
-    this.sourceKey,
-  );
+    this.sourceKey, {
+    this.pages,
+    this.language,
+    this.stars,
+  });
 
   CustomComic.fromJson(Map json, this.sourceKey)
       : title = json["title"],
@@ -53,5 +60,16 @@ class CustomComic extends BaseComic {
         cover = json["cover"],
         id = json["id"],
         tags = List<String>.from(json["tags"] ?? []),
-        description = json["description"] ?? "";
+        description = json["description"] ?? "",
+        language = sourceKey == 'ehentai' ? json["language"] as String? : null,
+        pages = switch (json["pages"] ?? json["maxPage"]) {
+          num value when value.isFinite => value.toInt(),
+          String value => int.tryParse(value),
+          _ => null,
+        },
+        stars = switch (json["stars"]) {
+          num value when value.isFinite => value.toDouble(),
+          String value => double.tryParse(value),
+          _ => null,
+        };
 }

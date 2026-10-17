@@ -336,6 +336,19 @@ class EhNetwork {
     if (leaderboard) {
       t++;
     }
+    // 清理错误写入的 cookie 异常;
+
+    try {
+      final uri = Uri.parse(ehBaseUrl);
+      for (final cookie in cookieJar.loadForRequest(uri)) {
+        if (cookie.name == 'sl') {
+          cookieJar.delete(uri.replace(path: cookie.path ?? '/'), 'sl');
+        }
+      }
+    } catch (_) {}
+    if (!leaderboard) {
+      url += "${url.contains('?') ? '&' : '?'}inline_set=dm_e";
+    }
     var res = await request(url, expiredTime: CacheExpiredTime.no);
     if (res.error) {
       return Res(null, errorMessage: res.errorMessage);
@@ -407,8 +420,12 @@ class EhNetwork {
                   ?.text
                   .nums ??
               "");
+          final tags = item
+              .querySelectorAll('div.gt, div.gtl')
+              .map((e) => e.attributes["title"] ?? "")
+              .toList();
           galleries.add(EhGalleryBrief(
-              title, type, time, "", coverPath, stars, link, [],
+              title, type, time, "", coverPath, stars, link, tags,
               pages: pages));
         } catch (e) {
           //忽视
@@ -490,8 +507,12 @@ class EhNetwork {
                   "");
           final link =
               item.querySelector("td.gl3m > a")?.attributes["href"] ?? "";
+          final tags = item
+              .querySelectorAll('div.gt, div.gtl')
+              .map((e) => e.attributes["title"] ?? "")
+              .toList();
           galleries.add(EhGalleryBrief(
-              title, type, time, uploader, coverPath!, stars, link, []));
+              title, type, time, uploader, coverPath!, stars, link, tags));
         } catch (e) {
           //忽视
         }

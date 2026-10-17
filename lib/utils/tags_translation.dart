@@ -43,12 +43,16 @@ extension TagsTranslation on String {
   static String _translateTags(String tag) {
     if (tag.contains('|')) {
       var splits = tag.split(' | ');
-      return enTagsTranslations[splits[0]] ??
-          enTagsTranslations[splits[1]] ??
+      if (splits.length == 1) {
+        // tag 含 '|' 但不含完整分隔符 ' | ', 按单个 '|' 兜底分割
+        splits = tag.split('|');
+      }
+      return enTagsTranslations[splits[0].trim()] ??
+          (splits.length > 1 ? enTagsTranslations[splits[1].trim()] : null) ??
           tag;
     } else if (tag.contains(':')) {
       var splits = tag.split(':');
-      if (_haveNamespace(splits[0])) {
+      if (splits.length > 1 && _haveNamespace(splits[0])) {
         return translationTagWithNamespace(splits[1], splits[0]);
       } else {
         return tag;

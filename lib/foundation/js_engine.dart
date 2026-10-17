@@ -5,7 +5,10 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:pica_comic/base.dart';
+import 'package:pica_comic/components/components.dart' show showToast;
+import 'package:pica_comic/foundation/app.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/foundation/def.dart';
 import 'package:pica_comic/foundation/log.dart';
@@ -14,6 +17,7 @@ import 'package:html/parser.dart' as html;
 import 'package:html/dom.dart' as dom;
 import 'package:pica_comic/network/cloudflare.dart';
 import 'package:pica_comic/network/cookie_jar.dart';
+import 'package:pica_comic/network/nhentai_network/nhentai_main_network.dart';
 import 'package:pica_comic/utils/extensions.dart';
 import 'package:flutter_qjs/flutter_qjs.dart';
 import 'package:pointycastle/api.dart';
@@ -115,6 +119,66 @@ class JsEngine with _JSEngineApi{
                   .firstWhereOrNull((element) => element.key == key)
                   ?.data[dataKey];
             }
+          case 'isLogged':
+            {
+              if (message["key"] == "jm") {
+                return ComicSource.find("jm")?.isLogin ?? false;
+              }
+              return null;
+            }
+          case 'jm_ui':
+            {
+              if (message["key"] != "jm") return null;
+              switch (message["function"]) {
+                case "supported":
+                  return true;
+                case "showMessage":
+                  showToast(message: message["message"].toString());
+                  return null;
+                case "showDialog":
+                  final context = App.globalContext;
+                  if (context == null) return null;
+                  final actions = List<String>.from(message["actions"]);
+                  return showDialog<int>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text(message["title"].toString()),
+                      content: SingleChildScrollView(
+                        child: Text(message["content"].toString()),
+                      ),
+                      actions: [
+                        for (var i = 0; i < actions.length; i++)
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(i),
+                            child: Text(actions[i]),
+                          ),
+                      ],
+                    ),
+                  );
+              }
+              return null;
+            }
+          case 'nhentai_state':
+            {
+              if (message["key"] != "nhentai") {
+                throw "Invalid source for nhentai_state";
+              }
+              final network = NhentaiNetwork();
+              if (message.containsKey("logged")) {
+                network.logged = message["logged"] as bool;
+              }
+              return {
+                "logged": network.logged,
+                "language": int.tryParse(appdata.settings[69]) ?? 0,
+              };
+            }
+          case 'htmanga_state':
+            {
+              if (message["key"] != "htmanga") {
+                throw "Invalid source for htmanga_state";
+              }
+              return {"baseUrl": appdata.settings[31]};
+            }
           case 'save_data':
             {
               String key = message["key"];
@@ -143,6 +207,9 @@ class JsEngine with _JSEngineApi{
               if (source == null) {
                 throw "Source not found: $key";
               }
+              if (key == "jm" && settingKey == "dailyCheckInTask") {
+                return appdata.settings[88] == "1";
+              }
               // First try to get from saved data
               var savedValue = source.data["settings"]?[settingKey];
               if (savedValue != null) {
@@ -169,6 +236,11 @@ class JsEngine with _JSEngineApi{
           case 'http':
             {
               return _http(Map.from(message));
+            }
+          case 'delay':
+            {
+              final milliseconds = (message['time'] as num).toInt().clamp(0, 60000);
+              return Future<void>.delayed(Duration(milliseconds: milliseconds));
             }
           case 'html':
             {
@@ -224,8 +296,10 @@ class JsEngine with _JSEngineApi{
 
     dynamic body = response?.data;
     if (body is List<int>) {
-      // Convert bytes to UTF-8 string for JS compatibility
-      body = utf8.decode(body, allowMalformed: true);
+      // Binary indexes must not pass through UTF-8 decoding.
+      body = req["bytes"] == true
+          ? body.toList()
+          : utf8.decode(body, allowMalformed: true);
     }
 
     return {
@@ -255,12 +329,16 @@ class JsEngine with _JSEngineApi{
 mixin class _JSEngineApi{
   final Map<int, dom.Document> _documents = {};
   final Map<int, dom.Element> _elements = {};
+  final Map<int, dom.Node> _nodes = {};
   CookieJarSql? _cookieJar;
 
   dynamic handleHtmlCallback(Map<String, dynamic> data) {
     switch (data["function"]) {
       case "parse":
         _documents[data["key"]] = html.parse(data["data"]);
+        return null;
+      case "dispose":
+        _documents.remove(data["key"]);
         return null;
       case "querySelector":
         var res = _documents[data["key"]]!.querySelector(data["query"]);
@@ -300,6 +378,52 @@ mixin class _JSEngineApi{
           keys.add(_elements.length - 1);
         }
         return keys;
+      case "getNodes":
+        var res = _elements[data["key"]]!.nodes;
+        var keys = <int>[];
+        for (var node in res) {
+          _nodes[_nodes.length] = node;
+          keys.add(_nodes.length - 1);
+        }
+        return keys;
+      case "getParent":
+        var res = _elements[data["key"]]!.parent;
+        if (res == null) return null;
+        _elements[_elements.length] = res;
+        return _elements.length - 1;
+      case "getPreviousSibling":
+        var res = _elements[data["key"]]!.previousElementSibling;
+        if (res == null) return null;
+        _elements[_elements.length] = res;
+        return _elements.length - 1;
+      case "getNextSibling":
+        var res = _elements[data["key"]]!.nextElementSibling;
+        if (res == null) return null;
+        _elements[_elements.length] = res;
+        return _elements.length - 1;
+      case "getClassNames":
+        return _elements[data["key"]]!.classes.toList();
+      case "getId":
+        return _elements[data["key"]]!.id;
+      case "getLocalName":
+        return _elements[data["key"]]!.localName;
+      case "node_text":
+        return _nodes[data["key"]]!.text;
+      case "node_type":
+        return switch (_nodes[data["key"]]!.nodeType) {
+          dom.Node.ELEMENT_NODE => "element",
+          dom.Node.TEXT_NODE => "text",
+          dom.Node.COMMENT_NODE => "comment",
+          dom.Node.DOCUMENT_NODE => "document",
+          _ => "unknown",
+        };
+      case "node_toElement":
+        var node = _nodes[data["key"]]!;
+        if (node is dom.Element) {
+          _elements[_elements.length] = node;
+          return _elements.length - 1;
+        }
+        return null;
       case "getElementById":
         var res = _documents[data["key"]]!.getElementById(data["id"]);
         if(res == null) return null;
@@ -337,7 +461,16 @@ mixin class _JSEngineApi{
           "session": e.expires == null,
         }).toList();
       case "delete":
-        clearCookies([data["url"]]);
+        if (data['names'] is List) {
+          final uri = Uri.parse(data['url']);
+          for (final cookie in _cookieJar!.loadForRequest(uri)) {
+            if ((data['names'] as List).contains(cookie.name)) {
+              _cookieJar!.delete(uri.replace(path: cookie.path ?? '/'), cookie.name);
+            }
+          }
+        } else {
+          clearCookies([data["url"]]);
+        }
         return null;
     }
   }
@@ -345,6 +478,7 @@ mixin class _JSEngineApi{
   void clear(){
     _documents.clear();
     _elements.clear();
+    _nodes.clear();
   }
 
   void clearCookies(List<String> domains) async{

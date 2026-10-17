@@ -63,6 +63,33 @@ class ComicReadingPageLogic extends StateController {
 
   bool isOnChapterCommentsPage = false;
 
+  /// 当前是否为连续滚动阅读模式
+  bool get isContinuousMode =>
+      readingMethod == ReadingMethod.topToBottomContinuously;
+
+  /// 是否已滚动到本章开头(带 2px 容差, 避免浮点严格相等判断失效)
+  bool get isAtScrollStart =>
+      scrollController.hasClients &&
+      scrollController.position.pixels <=
+          scrollController.position.minScrollExtent + 2;
+
+  /// 是否已滚动到本章末尾(带 2px 容差)
+  bool get isAtScrollEnd =>
+      scrollController.hasClients &&
+      scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 2;
+
+  /// 已滚动到章末且存在下一章
+  bool get isAtChapterEnd =>
+      isContinuousMode &&
+      data.hasEp &&
+      order < (data.eps?.length ?? 1) &&
+      isAtScrollEnd;
+
+  /// 已滚动到章首且存在上一章
+  bool get isAtChapterStart =>
+      isContinuousMode && data.hasEp && order > 1 && isAtScrollStart;
+
   /// 双页模式下是否在第一页时显示单页
   bool get singlePageForFirstScreen => appdata.implicitData[1] == '1';
 
@@ -93,7 +120,11 @@ class ComicReadingPageLogic extends StateController {
     _index = _getIndex(initialPage);
     order <= 0 ? order = 1 : order;
     itemScrollListener.itemPositions.addListener(() {
-      var newIndex = itemScrollListener.itemPositions.value.first.index + 1;
+      if (itemScrollListener.itemPositions.value.isEmpty) {
+        return;
+      }
+      var newIndex = (itemScrollListener.itemPositions.value.first.index + 1)
+          .clamp(1, urls.isEmpty ? 1 : urls.length);
       if (newIndex != index) {
         index = newIndex;
         update(["ToolBar"]);
@@ -146,28 +177,6 @@ class ComicReadingPageLogic extends StateController {
 
   ///旋转方向: null-跟随系统, false-竖向, true-横向
   bool? rotation;
-
-  ///是否应该显示悬浮按钮, 为-1表示显示上一章, 为0表示不显示, 为1表示显示下一章
-  int showFloatingButtonValue = 0;
-
-  double fABValue = 0;
-
-  void showFloatingButton(int value) {
-    if (value == 0) {
-      if (showFloatingButtonValue != 0) {
-        showFloatingButtonValue = 0;
-        fABValue = 0;
-        update();
-      }
-    }
-    if (value == 1 && showFloatingButtonValue == 0) {
-      showFloatingButtonValue = 1;
-      update();
-    } else if (value == -1 && showFloatingButtonValue == 0 && order != 1) {
-      showFloatingButtonValue = -1;
-      update();
-    }
-  }
 
   ///当前的页面, 0和最后一个为空白页, 用于进行章节跳转
   late int _index;
@@ -230,6 +239,10 @@ class ComicReadingPageLogic extends StateController {
       ReadingMethod.values[int.parse(appdata.settings[9]) - 1];
 
   void jumpToNextPage() {
+    if (isAtChapterEnd) {
+      jumpToNextChapter();
+      return;
+    }
     if (readingMethod.index < 3) {
       pageController.jumpToPage(index + 1);
     } else if (readingMethod == ReadingMethod.topToBottomContinuously) {
@@ -240,6 +253,10 @@ class ComicReadingPageLogic extends StateController {
   }
 
   void jumpToLastPage() {
+    if (isAtChapterStart) {
+      jumpToLastChapter();
+      return;
+    }
     if (readingMethod.index < 3) {
       pageController.jumpToPage(index - 1);
     } else if (readingMethod == ReadingMethod.topToBottomContinuously) {
@@ -279,7 +296,6 @@ class ComicReadingPageLogic extends StateController {
 
   void jumpToNextChapter() {
     var eps = data.eps;
-    showFloatingButtonValue = 0;
     if (!data.hasEp || order == eps?.length) {
       if (readingMethod != ReadingMethod.topToBottomContinuously) {
         if (readingMethod.index < 3) {
@@ -320,7 +336,6 @@ class ComicReadingPageLogic extends StateController {
   }
 
   void jumpToLastChapter() {
-    showFloatingButtonValue = 0;
     if (order == 1 || !data.hasEp) {
       if (readingMethod != ReadingMethod.topToBottomContinuously) {
         jumpByDeviceType(1);
@@ -376,7 +391,6 @@ class ComicReadingPageLogic extends StateController {
     clearPhotoViewControllers();
     noScroll = false;
     currentScale = 1.0;
-    showFloatingButtonValue = 0;
     index = 1;
     urls.clear();
     isLoading = true;

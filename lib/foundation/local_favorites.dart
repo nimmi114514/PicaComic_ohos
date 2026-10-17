@@ -49,6 +49,25 @@ final class FavoriteType {
 
   static FavoriteType get nhentai => const FavoriteType(6);
 
+  // Recognize both legacy and script records without changing stored types.
+  List<int> get _compatibleKeys {
+    const legacyKeys = {
+      'picacg': 0,
+      'ehentai': 1,
+      'jm': 2,
+      'hitomi': 3,
+      'htmanga': 4,
+      'nhentai': 6,
+    };
+    for (final entry in legacyKeys.entries) {
+      final scriptKey = entry.key.hashCode;
+      if (key == entry.value || key == scriptKey) {
+        return {key, entry.value, scriptKey}.toList();
+      }
+    }
+    return [key];
+  }
+
   ComicType get comicType {
     if (key >= 0 && key <= 6) {
       return ComicType.values[key];
@@ -59,7 +78,7 @@ final class FavoriteType {
   ComicSource get comicSource {
     if (key <= 6) {
       var key = comicType.name.toLowerCase();
-      return ComicSource.find(key)!;
+      return ComicSource.find(key) ?? (throw "Comic Source Not Found: $key");
     }
     return ComicSource.sources
             .firstWhereOrNull((element) => element.intKey == key) ??
@@ -107,7 +126,13 @@ class FavoriteItem {
 
   String toDownloadId() {
     try {
-      return switch (type.comicSource.key) {
+      // Local files remain accessible after uninstalling their source.
+      final key = type.comicType != ComicType.other
+          ? type.comicType.name.toLowerCase()
+          : const ['picacg', 'ehentai', 'jm', 'hitomi', 'htmanga', 'nhentai']
+                  .firstWhereOrNull((key) => key.hashCode == type.key) ??
+              type.comicSource.key;
+      final legacyId = switch (key) {
         "picacg" => target,
         "ehentai" => getGalleryId(target),
         "jm" => "jm$target",
@@ -116,8 +141,15 @@ class FavoriteItem {
             : target,
         "htmanga" => "Ht$target",
         "nhentai" => "nhentai$target",
-        _ => DownloadManager().generateId(type.comicSource.key, target)
+        _ => "$key-$target"
       };
+      final downloads = DownloadManager();
+      if (downloads.isExists(legacyId)) return legacyId;
+      final source = ComicSource.find(key);
+      final customId = source == null
+          ? "$key-$target"
+          : downloads.generateId(key, target);
+      return downloads.isExists(customId) ? customId : legacyId;
     } catch (e) {
       return "**Invalid ID**";
     }
@@ -439,11 +471,12 @@ class LocalFavoritesManager {
 
   Future<List<String>> find(String target, FavoriteType type) async {
     var res = <String>[];
+    final keys = type._compatibleKeys;
     for (var folder in folderNames) {
       var rows = _db.select("""
         select * from "$folder"
-        where target == ? and type == ?;
-      """, [target, type.key]);
+        where target == ? and type in (${List.filled(keys.length, '?').join(',')});
+      """, [target, ...keys]);
       if (rows.isNotEmpty) {
         res.add(folder);
       }
@@ -452,17 +485,7 @@ class LocalFavoritesManager {
   }
 
   Future<List<String>> findWithModel(FavoriteItem item) async {
-    var res = <String>[];
-    for (var folder in folderNames) {
-      var rows = _db.select("""
-        select * from "$folder"
-        where target == ? and type == ?;
-      """, [item.target, item.type.key]);
-      if (rows.isNotEmpty) {
-        res.add(folder);
-      }
-    }
-    return res;
+    return find(item.target, item.type);
   }
 
   Future<void> saveData() async {
@@ -519,15 +542,26 @@ class LocalFavoritesManager {
       LogManager.addLog(LogLevel.info, "LocalFavoritesManager.readData",
           "read folders from local database $folders");
       var folderToOrder = <String, int>{};
-      for (var folder in folders) {
-        var res = tmp_db.select("""
+      if (!tmp_db
+          .select("SELECT name FROM sqlite_master WHERE type='table';")
+          .map((element) => element["name"] as String)
+          .contains('folder_order')) {
+        LogManager.addLog(LogLevel.info, "LocalFavoritesManager.readData",
+            "temp local favorites db has no folder_order table, fallback to default order");
+        for (var folder in folders) {
+          folderToOrder[folder] = 0;
+        }
+      } else {
+        for (var folder in folders) {
+          var res = tmp_db.select("""
         select * from folder_order
         where folder_name == ?;
       """, [folder]);
-        if (res.isNotEmpty) {
-          folderToOrder[folder] = res.first["order_value"];
-        } else {
-          folderToOrder[folder] = 0;
+          if (res.isNotEmpty) {
+            folderToOrder[folder] = res.first["order_value"];
+          } else {
+            folderToOrder[folder] = 0;
+          }
         }
       }
       folders.sort((a, b) {
@@ -959,10 +993,11 @@ class LocalFavoritesManager {
       return; // 如果表不存在，直接返回
     }
 
+    final keys = type._compatibleKeys;
     _db.execute("""
       delete from "$folder"
-      where target == ? and type == ?;
-    """, [target, type.key]);
+      where target == ? and type in (${List.filled(keys.length, '?').join(',')});
+    """, [target, ...keys]);
     saveData();
   }
 

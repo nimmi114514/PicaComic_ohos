@@ -374,7 +374,6 @@ class ComicReadingPage extends StatelessWidget {
         endDrawer: Drawer(
           child: buildEpsView(),
         ),
-        floatingActionButton: buildEpChangeButton(logic),
         body: StateBuilder<ComicReadingPageLogic>(builder: (logic) {
           if (logic.isLoading) {
             history.readEpisode.add(logic.order);
@@ -662,7 +661,12 @@ class ComicReadingPage extends StatelessWidget {
   /// Select a image form screen, to share or download
   Future<int?> selectImage() async {
     var logic = StateController.find<ComicReadingPageLogic>();
-    var items = logic.itemScrollListener.itemPositions.value.toList();
+    var items = logic.itemScrollListener.itemPositions.value
+        .where((item) => item.index < logic.urls.length)
+        .toList();
+    if (items.isEmpty) {
+      return null;
+    }
     if (items.length == 1) {
       return items[0].index;
     }
@@ -762,70 +766,5 @@ class ComicReadingPage extends StatelessWidget {
         readingData.loadImage(logic.order, index, logic.urls[index]));
 
     saveImage(file);
-  }
-
-  Widget? buildEpChangeButton(ComicReadingPageLogic logic) {
-    if (!readingData.hasEp) return null;
-    switch (logic.showFloatingButtonValue) {
-      case -1:
-        return FloatingActionButton(
-          onPressed: () => logic.jumpToLastChapter(),
-          child: const Icon(Icons.arrow_back_ios_outlined),
-        );
-      case 0:
-        return null;
-      case 1:
-        return Hero(
-            tag: "FAB",
-            child: StateBuilder<ComicReadingPageLogic>(
-              id: "FAB",
-              builder: (logic) {
-                return Container(
-                  width: 58,
-                  height: 58,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                      color: Theme.of(App.globalContext!)
-                          .colorScheme
-                          .primaryContainer,
-                      borderRadius: BorderRadius.circular(16)),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                          child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => logic.jumpToNextChapter(),
-                          borderRadius: BorderRadius.circular(16),
-                          child: Center(
-                              child: Icon(
-                            Icons.arrow_forward_ios,
-                            size: 24,
-                            color: Theme.of(App.globalContext!)
-                                .colorScheme
-                                .onPrimaryContainer,
-                          )),
-                        ),
-                      )),
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: logic.fABValue,
-                        child: ColoredBox(
-                          color: Theme.of(App.globalContext!)
-                              .colorScheme
-                              .surfaceTint
-                              .withOpacity(0.2),
-                          child: const SizedBox.expand(),
-                        ),
-                      )
-                    ],
-                  ),
-                );
-              },
-            ));
-    }
-    return null;
   }
 }
