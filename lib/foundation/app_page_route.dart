@@ -77,6 +77,25 @@ class AppPageRoute<T> extends PageRoute<T> with _AppRouteTransitionMixin{
   final bool isRootRoute;
 }
 
+void replaceWithRootPage(
+  BuildContext context,
+  WidgetBuilder builder, {
+  RouteSettings? settings,
+}) {
+  final navigator = Navigator.of(context);
+  final rootNavigator = Navigator.of(context, rootNavigator: true);
+  final page = AppPageRoute<void>(builder: builder, settings: settings);
+  if (identical(navigator, rootNavigator)) {
+    navigator.pushReplacement<void, void>(page);
+    return;
+  }
+
+  // Fullscreen pages must not inherit the main pane's sidebar viewport.
+  final previousRoute = ModalRoute.of(context)!;
+  rootNavigator.push<void>(page);
+  navigator.removeRoute(previousRoute);
+}
+
 mixin _AppRouteTransitionMixin<T> on PageRoute<T> {
   /// Builds the primary contents of the route.
   @protected

@@ -54,11 +54,10 @@ class _HistoryReaderLaunchPageState extends State<HistoryReaderLaunchPage> {
       }
       return;
     }
-    Navigator.of(context).pushReplacement(
-      AppPageRoute(
-        builder: (_) => page,
-        settings: const RouteSettings(name: '/ComicReadingPage'),
-      ),
+    replaceWithRootPage(
+      context,
+      (_) => page,
+      settings: const RouteSettings(name: '/ComicReadingPage'),
     );
   }
 
