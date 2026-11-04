@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -37,7 +38,6 @@ import 'package:pica_comic/utils/show_delayed_dialog.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/components/components.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
-
 
 enum DownloadSortType {
   time(0),
@@ -1315,8 +1315,8 @@ class _DownloadPageState extends State<DownloadPage> {
         // 默认使用所有漫画
         if (logic.downloadTypeFilter != null) {
           fullResultComics = logic.baseComics
-              .where((element) =>
-                  element._displayType == logic.downloadTypeFilter)
+              .where(
+                  (element) => element._displayType == logic.downloadTypeFilter)
               .toList();
         } else {
           fullResultComics = logic.baseComics;
@@ -2427,7 +2427,7 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
   List<String> eps = [];
   List<int> downloadedEps = [];
   List<int> _visibleEpIndexes = [];
-  late final comic = widget.item;
+  late DownloadedItem comic = widget.item;
 
   ComicChapters? _chapters;
   int _selectedGroupIndex = 0;
@@ -2484,7 +2484,8 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
   Future<void> _fetchLatestEps() async {
     setState(() => _loadingEps = true);
     try {
-      if (comic is! DownloadedComic && comic is! DownloadedJmComic &&
+      if (comic is! DownloadedComic &&
+          comic is! DownloadedJmComic &&
           comic is! CustomDownloadedItem) {
         return;
       }
@@ -2497,7 +2498,8 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
         showToast(message: '漫画源不支持加载详情'.tl);
         return;
       }
-      final res = await source.loadComicInfo!(ComicCommentsHelper.getComicId(comic));
+      final res =
+          await source.loadComicInfo!(ComicCommentsHelper.getComicId(comic));
       if (!mounted) return;
       if (res.error) throw res.errorMessageWithoutNull;
       if (!identical(source, ComicSource.find(source.key))) {
@@ -2507,8 +2509,8 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
       if (newChapters == null || newChapters.length == 0) return;
       if (comic is DownloadedComic) {
         var c = comic as DownloadedComic;
-        var newEps = newChapters.titles.toList();
         var oldEps = c.eps;
+        var newEps = _preserveDownloaded(newChapters.titles.toList(), oldEps);
         setState(() {
           _refreshVisibleEpisodes(allEps: newEps);
         });
@@ -2524,12 +2526,13 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
             throw '章节顺序已变化，已保留旧下载章节'.tl;
           }
         }
-        var newEps = newChapters.titles.toList();
         var oldEps = c.eps;
+        var newEps = _preserveDownloaded(newChapters.titles.toList(), oldEps);
         setState(() {
           _refreshVisibleEpisodes(allEps: newEps);
         });
-        if (!_listEquals(newEps, oldEps) || c.comic.series.length != ids.length) {
+        if (!_listEquals(newEps, oldEps) ||
+            c.comic.series.length != ids.length) {
           c.comic.epNames = newEps;
           c.comic.series = {
             for (int i = 0; i < ids.length; i++) i + 1: ids[i],
@@ -2538,32 +2541,184 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
         }
       } else if (comic is CustomDownloadedItem) {
         var c = comic as CustomDownloadedItem;
-        var newEps = newChapters.titles.toList();
-        var oldEps = c.eps;
-        setState(() {
-          _refreshVisibleEpisodes(allEps: newEps, chapters: newChapters);
-          _buildTabController();
-        });
-        bool epsChanged = !_listEquals(newEps, oldEps);
-        bool subIdMissing = c.subId == null && res.data.subId != null;
-        if (epsChanged || subIdMissing) {
-          var json = c.toJson();
-          if (epsChanged) {
-            json["chapters"] = newChapters.toJson();
-          }
+        final merged = _preserveDownloadedChapters(
+            newChapters, c.chapters, c.downloadedEps);
+        final mergedChapters = merged.chapters;
+        final newEps = mergedChapters.titles.toList();
+        final chaptersChanged = c.chapters == null ||
+            jsonEncode(c.chapters!.toJson()) !=
+                jsonEncode(mergedChapters.toJson());
+        final downloadedChanged =
+            !_listEquals(c.downloadedEps, merged.downloadedEps);
+        final subIdMissing = c.subId == null && res.data.subId != null;
+
+        if (downloadedChanged) {
+          _moveDownloadedEpisodes(c, merged.moves);
+        }
+        if (chaptersChanged || downloadedChanged || subIdMissing) {
+          final json = c.toJson();
+          json["chapters"] = mergedChapters.toJson();
+          json["downloadedEps"] = merged.downloadedEps;
           if (res.data.subId != null) {
             json["subId"] = res.data.subId;
           }
-          var updated = CustomDownloadedItem.fromJson(json);
+          final updated = CustomDownloadedItem.fromJson(json);
           updated.time = c.time;
           updated.directory = c.directory;
-          _persistComic(updated);
+          DownloadManager().updateComic(updated);
+          comic = updated;
+          final index =
+              widget.logic.comics.indexWhere((item) => item.id == updated.id);
+          if (index != -1) widget.logic.comics[index] = updated;
         }
+        setState(() {
+          downloadedEps = merged.downloadedEps;
+          _refreshVisibleEpisodes(allEps: newEps, chapters: mergedChapters);
+          _buildTabController();
+        });
       }
     } catch (e) {
       if (mounted) showToast(message: e.toString());
     } finally {
       if (mounted) setState(() => _loadingEps = false);
+    }
+  }
+
+  List<T> _preserveDownloaded<T>(List<T> latest, List<T> stored) {
+    final result = latest.toList();
+    for (final index in comic.downloadedEps) {
+      if (index < 0 || index >= stored.length) continue;
+      while (result.length <= index) {
+        result.add(stored[result.length]);
+      }
+      result[index] = stored[index];
+    }
+    return result;
+  }
+
+  ({
+    ComicChapters chapters,
+    List<int> downloadedEps,
+    Map<int, int> moves,
+  }) _preserveDownloadedChapters(
+      ComicChapters latest, ComicChapters? stored, List<int> downloadedEps) {
+    if (stored == null) {
+      return (
+        chapters: latest,
+        downloadedEps: downloadedEps.toList(),
+        moves: const {},
+      );
+    }
+
+    List<({String? group, String id, String title})> entries(
+        ComicChapters chapters) {
+      if (!chapters.isGrouped) {
+        return [
+          for (final entry in chapters.allChapters.entries)
+            (group: null, id: entry.key, title: entry.value),
+        ];
+      }
+      return [
+        for (final group in chapters.groups)
+          for (final entry in chapters.getGroup(group).entries)
+            (group: group, id: entry.key, title: entry.value),
+      ];
+    }
+
+    final storedEntries = entries(stored);
+    final downloaded = <String, ({String? group, int index, String title})>{};
+    for (final index in downloadedEps) {
+      if (index < 0 || index >= storedEntries.length) continue;
+      final entry = storedEntries[index];
+      downloaded[entry.id] =
+          (group: entry.group, index: index, title: entry.title);
+    }
+
+    final matched = <String>{};
+    final groups = <String, Map<String, String>>{};
+    if (latest.isGrouped) {
+      for (final group in latest.groups) {
+        final chapters = <String, String>{};
+        for (final entry in latest.getGroup(group).entries) {
+          final old = downloaded[entry.key];
+          chapters[entry.key] = old?.title ?? entry.value;
+          if (old != null) matched.add(entry.key);
+        }
+        groups[group] = chapters;
+      }
+      for (final entry in downloaded.entries) {
+        if (matched.contains(entry.key)) continue;
+        final storedGroup = entry.value.group;
+        final group = storedGroup != null && groups.containsKey(storedGroup)
+            ? storedGroup
+            : groups.keys.last;
+        groups[group]![entry.key] = entry.value.title;
+      }
+    } else {
+      final chapters = <String, String>{};
+      for (final entry in latest.allChapters.entries) {
+        final old = downloaded[entry.key];
+        chapters[entry.key] = old?.title ?? entry.value;
+        if (old != null) matched.add(entry.key);
+      }
+      for (final entry in downloaded.entries) {
+        if (!matched.contains(entry.key)) {
+          chapters[entry.key] = entry.value.title;
+        }
+      }
+      groups[""] = chapters;
+    }
+
+    final merged = latest.isGrouped
+        ? ComicChapters.grouped(groups)
+        : ComicChapters(groups[""]!);
+    final ids = merged.ids.toList();
+    final newIndexes = <String, int>{
+      for (int i = 0; i < ids.length; i++) ids[i]: i,
+    };
+    final newDownloadedEps = <int>[];
+    final moves = <int, int>{};
+    for (final entry in downloaded.entries) {
+      final oldIndex = entry.value.index;
+      final newIndex = newIndexes[entry.key];
+      if (newIndex == null) continue;
+      newDownloadedEps.add(newIndex);
+      if (oldIndex != newIndex) moves[oldIndex] = newIndex;
+    }
+    newDownloadedEps.sort();
+    return (
+      chapters: merged,
+      downloadedEps: newDownloadedEps,
+      moves: moves,
+    );
+  }
+
+  void _moveDownloadedEpisodes(
+      CustomDownloadedItem comic, Map<int, int> moves) {
+    if (moves.isEmpty) return;
+    final manager = DownloadManager();
+    final root =
+        "${manager.path}/${comic.directory ?? manager.getDirectory(comic.id)}";
+    final temporary = <int, Directory>{};
+    for (final oldIndex in moves.keys) {
+      final source = Directory("$root/${oldIndex + 1}");
+      final temp = Directory("$root/.chapter_refresh_${oldIndex + 1}");
+      if (!source.existsSync() || temp.existsSync()) {
+        throw '下载章节目录更新失败'.tl;
+      }
+      temporary[oldIndex] = temp;
+    }
+    for (final newIndex in moves.values) {
+      if (!moves.containsKey(newIndex) &&
+          Directory("$root/${newIndex + 1}").existsSync()) {
+        throw '下载章节目录更新失败'.tl;
+      }
+    }
+    for (final oldIndex in moves.keys) {
+      Directory("$root/${oldIndex + 1}").renameSync(temporary[oldIndex]!.path);
+    }
+    for (final entry in moves.entries) {
+      temporary[entry.key]!.renameSync("$root/${entry.value + 1}");
     }
   }
 
@@ -2577,7 +2732,7 @@ class _DownloadedComicInfoViewState extends State<DownloadedComicInfoView>
   }
 
   /// 比较两个章节列表是否相同
-  bool _listEquals(List<String> a, List<String> b) {
+  bool _listEquals<T>(List<T> a, List<T> b) {
     if (a.length != b.length) return false;
     for (int i = 0; i < a.length; i++) {
       if (a[i] != b[i]) return false;
@@ -2952,8 +3107,8 @@ void _toComicInfoPage(DownloadedItem comic) {
   } else if (comic is DownloadedHitomiComic) {
     context.to(() => ComicPage(sourceKey: 'hitomi', id: comic.comic.id));
   } else if (comic is DownloadedHtComic) {
-    context.to(() => ComicPage(
-        sourceKey: 'htmanga', id: comic.id.replaceFirst('Ht', '')));
+    context.to(() =>
+        ComicPage(sourceKey: 'htmanga', id: comic.id.replaceFirst('Ht', '')));
   } else if (comic is NhentaiDownloadedComic) {
     context.to(() => ComicPage(
         sourceKey: 'nhentai', id: comic.id.replaceFirst("nhentai", "")));

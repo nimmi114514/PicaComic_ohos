@@ -1822,6 +1822,16 @@ class _SettingsPageState extends State<SettingsPage> implements PopEntry {
           ),
         ),
         SwitchListTile(
+          title: Text("切换至codeberg更新漫画源和更新".tl),
+          subtitle: const Text("关闭可切换回github"),
+          value: appdata.settings[105] == "1",
+          onChanged: (value) {
+            appdata.settings[105] = value ? "1" : "0";
+            appdata.updateSettings();
+            setState(() {});
+          },
+        ),
+        SwitchListTile(
           title: Text("启动时检查更新".tl),
           value: appdata.settings[2] == "1",
           onChanged: (value) {
