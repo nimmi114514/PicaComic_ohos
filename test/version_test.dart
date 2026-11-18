@@ -19,4 +19,10 @@ void main() {
     expect(needUpdate('5.0.5+46321', 'v5.0.5'), isFalse);
     expect(needUpdate('5.0.5+46321', 'v5.0.0'), isFalse);
   });
+
+  test('needUpdate handles the OHOS 5.1.1 release', () {
+    expect(needUpdate('5.0.5+46321', 'v5.1.1'), isTrue);
+    expect(needUpdate('5.1.1+46322', 'v5.1.1'), isFalse);
+    expect(needUpdate('5.1.1+46322', 'v5.1.0'), isFalse);
+  });
 }

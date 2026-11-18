@@ -78,10 +78,10 @@ void main() {
             as Map<String, dynamic>;
     final app = manifest['app'] as Map<String, dynamic>;
     final pubspec = File('pubspec.yaml').readAsStringSync();
-    expect(appVersion, '5.0.5');
+    expect(appVersion, '5.1.1');
     expect(ApiEndpoints.version, appVersion);
     expect(app['versionName'], appVersion);
-    expect(app['versionCode'], 46321);
+    expect(app['versionCode'], 46322);
     expect(RegExp(r'^version: (.+)$', multiLine: true).firstMatch(pubspec)![1],
         '${app['versionName']}+${app['versionCode']}');
   });

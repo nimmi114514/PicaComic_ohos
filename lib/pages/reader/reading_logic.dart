@@ -61,6 +61,9 @@ class ComicReadingPageLogic extends StateController {
 
   bool haveUsedInitialPage = false;
 
+  /// 切换到上一章后, 章节加载完成时跳转到该章末尾
+  bool jumpToLastPageOnChapterLoad = false;
+
   bool isOnChapterCommentsPage = false;
 
   /// 当前是否为连续滚动阅读模式
@@ -221,6 +224,22 @@ class ComicReadingPageLogic extends StateController {
   ///所有的图片链接
   var urls = <String>[];
 
+  /// 仅在当前阅读会话中切换原图，便于与译文对照。
+  bool get showOriginalPages => data.showOriginalPages;
+
+  void toggleShowOriginalPages() {
+    data.showOriginalPages = !data.showOriginalPages;
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    refreshTranslatedImages();
+    update(["ToolBar"]);
+  }
+
+  void refreshTranslatedImages() {
+    requestedLoadingItems = [];
+    update();
+  }
+
   void reload() {
     index = 1;
     isOnChapterCommentsPage = false;
@@ -254,7 +273,7 @@ class ComicReadingPageLogic extends StateController {
 
   void jumpToLastPage() {
     if (isAtChapterStart) {
-      jumpToLastChapter();
+      jumpToLastChapter(jumpToLast: true);
       return;
     }
     if (readingMethod.index < 3) {
@@ -335,7 +354,7 @@ class ComicReadingPageLogic extends StateController {
     update();
   }
 
-  void jumpToLastChapter() {
+  void jumpToLastChapter({bool jumpToLast = false}) {
     if (order == 1 || !data.hasEp) {
       if (readingMethod != ReadingMethod.topToBottomContinuously) {
         jumpByDeviceType(1);
@@ -356,6 +375,7 @@ class ComicReadingPageLogic extends StateController {
     index = 1;
     requestedLoadingItems = [];
     clearPhotoViewControllers();
+    jumpToLastPageOnChapterLoad = jumpToLast;
     update();
   }
 

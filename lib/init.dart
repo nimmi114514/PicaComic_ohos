@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/foundation/cache_manager.dart';
 import 'package:pica_comic/foundation/history.dart';
+import 'package:pica_comic/foundation/image_translation/translation_store.dart';
 import 'package:pica_comic/foundation/js_engine.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
 import 'package:pica_comic/foundation/log.dart';
@@ -21,6 +22,7 @@ import 'package:pica_comic/utils/cache_auto_clear.dart';
 import 'package:pica_comic/utils/io_extensions.dart';
 import 'package:pica_comic/utils/io_tools.dart';
 import 'package:pica_comic/utils/ohos_device_info.dart';
+import 'package:pica_comic/utils/opencc.dart';
 import 'package:pica_comic/utils/translations.dart';
 import 'package:pica_comic/utils/android_first_use_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -134,7 +136,9 @@ Future<void> init() async {
       JmNetwork().init(),
       LocalFavoritesManager().init(),
       HistoryManager().init(),
+      TranslationStore().init(),
       AppTranslation.init(),
+      OpenCC.init(),
     ]);
     CacheManager().setLimitSize(appdata.appSettings.cacheLimit);
 

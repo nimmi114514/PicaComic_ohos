@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 5.0.5+46321
+version: 5.1.1+46322
 environment:
   sdk: '>=3.3.0'
 
@@ -118,6 +118,9 @@ dependencies:
   cached_network_image: ^3.3.1
   flutter_mobx: ^2.3.0
   sqflite_common_ffi: ^2.3.0+4
+  # OHOS bundles ONNX Runtime directly; the translation worker uses Dart FFI.
+  unorm_dart: ^0.3.2
+  ffi: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -176,6 +179,7 @@ flutter:
     - assets/translation.json
     - assets/init.js
     - assets/tags_tw.json
+    - assets/opencc.txt
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/assets-and-images/#from-packages
 

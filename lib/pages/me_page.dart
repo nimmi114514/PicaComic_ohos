@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:pica_comic/foundation/comic_source/comic_source.dart';
 import 'package:pica_comic/components/components.dart';
@@ -17,6 +19,11 @@ import 'local_add_comic.dart';
 import 'package:pica_comic/pages/pre_search_page.dart';
 import 'package:pica_comic/pages/follow_updates_page.dart';
 import 'package:pica_comic/foundation/local_favorites.dart';
+import 'package:pica_comic/foundation/image_translation/translation_service.dart';
+import 'package:pica_comic/foundation/image_translation/translation_store.dart';
+import 'package:pica_comic/network/base_comic.dart';
+import 'package:pica_comic/pages/comic_page.dart';
+import 'package:pica_comic/pages/translated_comics_page.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 class _SearchBar extends StatelessWidget {
@@ -81,6 +88,7 @@ class MePage extends StatelessWidget {
           buildAccount(1000), // width not critical for Fluent layout here
           buildComicSource(context, 1000),
           buildDownload(context, 1000),
+          const _TranslatedComics(),
           buildLocalAddComic(context, 1000),
           buildImageFavorite(context, 1000),
           buildTools(context, 1000),
@@ -115,6 +123,7 @@ class MePage extends StatelessWidget {
                             buildAccount(width),
                             buildComicSource(context, width),
                             buildDownload(context, width),
+                            const _TranslatedComics(),
                             buildLocalAddComic(context, width),
                           ],
                         ),
@@ -135,6 +144,7 @@ class MePage extends StatelessWidget {
                 else ...[
                   buildAccount(width),
                   buildDownload(context, width),
+                  const _TranslatedComics(),
                   buildLocalAddComic(context, width),
                   buildImageFavorite(context, width),
                   buildComicSource(context, width),
@@ -512,7 +522,6 @@ class MePage extends StatelessWidget {
     );
   }
 
-
   Widget buildDownload(BuildContext context, double width) {
     return StateBuilder<SimpleController>(
       tag: "me_page_downloads",
@@ -779,6 +788,107 @@ class MePage extends StatelessWidget {
       }
     }
     return result;
+  }
+}
+
+class _TranslatedComics extends StatefulWidget {
+  const _TranslatedComics();
+
+  @override
+  State<_TranslatedComics> createState() => _TranslatedComicsState();
+}
+
+class _TranslatedComicsState extends State<_TranslatedComics> {
+  List<StoredTranslationComic> items = const [];
+  var count = 0;
+
+  void _load() {
+    var all = ImageTranslationService.translatedComics;
+    var translatedKeys = {
+      for (var item in all) '${item.sourceKey}\u0000${item.comicId}',
+    };
+    var enabledOnly = ImageTranslationService.enabledComicKeys.where((key) {
+      var separator = key.lastIndexOf('@');
+      if (separator <= 0 || separator == key.length - 1) return false;
+      var comicId = key.substring(0, separator);
+      var sourceKey = key.substring(separator + 1);
+      return !translatedKeys.contains('$sourceKey\u0000$comicId');
+    }).length;
+    items = all.take(20).toList();
+    count = all.length + enabledOnly;
+  }
+
+  void _reload() {
+    if (!TranslationStore().isInitialized || !mounted) return;
+    setState(_load);
+  }
+
+  @override
+  void initState() {
+    _load();
+    TranslationStore().addListener(_reload);
+    ImageTranslationService.instance.addListener(_reload);
+    unawaited(hydrateTranslatedComicMetadata().then((_) => _reload()));
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    TranslationStore().removeListener(_reload);
+    ImageTranslationService.instance.removeListener(_reload);
+    super.dispose();
+  }
+
+  CustomComic _asComic(StoredTranslationComic item) {
+    return CustomComic(
+      item.title.isEmpty ? item.comicId : item.title,
+      '',
+      item.cover,
+      item.comicId,
+      translatedComicTagsFor(item.sourceKey, item.comicId),
+      '',
+      item.sourceKey,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty && count == 0) return const SizedBox.shrink();
+    var setting = appdata.settings[44].split(',');
+    var scale = double.tryParse(setting.length > 1 ? setting[1] : '1') ?? 1;
+    var detailed = setting.first == '0' || setting.first == '3';
+    var tileWidth = detailed ? 420 * scale : 112 * scale;
+    var tileHeight = detailed ? 164 * scale : tileWidth / 0.72;
+    return _MePageCard(
+      icon: const Icon(Icons.translate_rounded),
+      title: '翻译库'.tl,
+      badge: count.toString(),
+      onTap: () => context.to(() => const TranslatedComicsPage()),
+      child: items.isEmpty
+          ? null
+          : SizedBox(
+              height: tileHeight + 4,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  var item = items[index];
+                  return SizedBox(
+                    width: tileWidth,
+                    height: tileHeight,
+                    child: TranslationComicTile(
+                      _asComic(item),
+                      onOpen: () => openTranslatedChaptersPage(context, item),
+                      categoryTags: translatedComicCategoriesFor(
+                        item.sourceKey,
+                        item.comicId,
+                      ),
+                    ),
+                  ).paddingHorizontal(4).paddingVertical(2);
+                },
+              ),
+            ).paddingHorizontal(8).paddingBottom(12),
+    );
   }
 }
 
